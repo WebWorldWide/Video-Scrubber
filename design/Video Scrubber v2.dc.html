@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F5F7FA;color:#14181F;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:#D0D7E2 transparent}
+a{color:#2563EB}a:hover{color:#1D4FD8}
+button{font:inherit;color:inherit}
+input::placeholder{color:#6B7584;font-style:italic}
+@keyframes vsScan{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+@keyframes vsPulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#F5F7FA;color:#14181F;font-family:Archivo,ui-sans-serif,system-ui,-apple-system,'Segoe UI','Helvetica Neue',Cantarell,sans-serif;font-size:13px;line-height:1.4">
+
+<sc-if value="{{ isMac }}" hint-placeholder-val="{{ true }}">
+<div style="height:38px;flex:none;display:flex;align-items:center;padding:0 14px;background:#FFFFFF;border-bottom:1px solid #E4E9F0;position:relative;user-select:none">
+<div style="display:flex;gap:8px">
+<span style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></span>
+<span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></span>
+<span style="width:12px;height:12px;border-radius:50%;background:#28C840"></span>
+</div>
+<div style="position:absolute;left:50%;transform:translateX(-50%);font-family:'Instrument Serif','Iowan Old Style',serif;font-synthesis:none;font-size:19px;line-height:1;letter-spacing:0">Video <i>Scrubber</i></div>
+</div>
+</sc-if>
+<sc-if value="{{ isWin }}" hint-placeholder-val="{{ false }}">
+<div style="height:34px;flex:none;display:flex;align-items:center;background:#FFFFFF;border-bottom:1px solid #E4E9F0;user-select:none">
+<div style="display:flex;align-items:center;gap:10px;padding:0 14px;flex:1">
+<svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:#2563EB;stroke-width:2;stroke-linecap:round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M12 3v18"></path></svg>
+<span style="font-family:'Instrument Serif',serif;font-synthesis:none;font-size:17px;line-height:1">Video <i>Scrubber</i></span>
+</div>
+<div style="display:flex;height:100%">
+<div style="width:46px;display:flex;align-items:center;justify-content:center" style-hover="background:#EEF2F7"><svg width="10" height="10" viewBox="0 0 10 10" style="stroke:#14181F;stroke-width:1"><path d="M0 5h10"></path></svg></div>
+<div style="width:46px;display:flex;align-items:center;justify-content:center" style-hover="background:#EEF2F7"><svg width="10" height="10" viewBox="0 0 10 10" style="fill:none;stroke:#14181F;stroke-width:1"><rect x="0.5" y="0.5" width="9" height="9"></rect></svg></div>
+<div style="width:46px;display:flex;align-items:center;justify-content:center" style-hover="background:#C42B1C"><svg width="10" height="10" viewBox="0 0 10 10" style="stroke:#14181F;stroke-width:1"><path d="M0 0l10 10M10 0L0 10"></path></svg></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isLinux }}" hint-placeholder-val="{{ false }}">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;background:#FFFFFF;border-bottom:1px solid #E4E9F0;position:relative;user-select:none">
+<div style="position:absolute;left:50%;transform:translateX(-50%);font-family:'Instrument Serif',serif;font-synthesis:none;font-size:19px;line-height:1">Video <i>Scrubber</i></div>
+<div style="display:flex;gap:10px">
+<div style="width:24px;height:24px;border-radius:50%;background:#EEF2F7;display:flex;align-items:center;justify-content:center" style-hover="background:#E4E9F0"><svg width="8" height="8" viewBox="0 0 10 10" style="stroke:#14181F;stroke-width:1.6"><path d="M0 8h10"></path></svg></div>
+<div style="width:24px;height:24px;border-radius:50%;background:#EEF2F7;display:flex;align-items:center;justify-content:center" style-hover="background:#E4E9F0"><svg width="8" height="8" viewBox="0 0 10 10" style="fill:none;stroke:#14181F;stroke-width:1.6"><rect x="1" y="1" width="8" height="8"></rect></svg></div>
+<div style="width:24px;height:24px;border-radius:50%;background:#EEF2F7;display:flex;align-items:center;justify-content:center" style-hover="background:#E4E9F0"><svg width="8" height="8" viewBox="0 0 10 10" style="stroke:#14181F;stroke-width:1.6"><path d="M1 1l8 8M9 1L1 9"></path></svg></div>
+</div>
+</div>
+</sc-if>
+
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:12px 24px;border-bottom:1px solid #E4E9F0;background:#FFFFFF;flex-wrap:wrap">
+<button onClick="{{ openFile }}" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:6px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-weight:500;font-size:12.5px" style-hover="background:#EEF2F7">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"></path></svg>
+Open video
+</button>
+<button onClick="{{ openDl }}" style="display:flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:8px;border:1px solid #C7D8FB;background:#EAF1FF;color:#1D4FD8;cursor:pointer;font-weight:500;font-size:12.5px;font-variant-numeric:tabular-nums" style-hover="background:#DCE8FF">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"></path></svg>
+{{ dlBtnLabel }}
+</button>
+<div style="min-width:0;flex:1 1 220px;display:flex;align-items:baseline;gap:10px">
+<span style="font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ fileName }}</span>
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584;white-space:nowrap;font-variant-numeric:tabular-nums">{{ fileMeta }}</span>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:999px;border:1px solid #E4E9F0;background:#FFFFFF">
+{{ statusDot }}
+<span style="font-size:12px;font-weight:500">{{ statusLabel }}</span>
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584;white-space:nowrap">whisper-large-v3-turbo · qwen2.5-vl-7b</span>
+</div>
+</div>
+
+<div style="flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;overflow:auto">
+
+<div style="flex:3 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px;padding:24px">
+
+<div onDrop="{{ onDrop }}" onDragOver="{{ onDragOver }}" style="flex:1 1 auto;min-height:260px;position:relative;border-radius:16px;border:1px solid #E4E9F0;background:#EAEEF4;overflow:hidden;container-type:size;display:flex;align-items:center;justify-content:center">
+<sc-if value="{{ hasSrc }}" hint-placeholder-val="{{ false }}">
+<video ref="{{ videoRef }}" src="{{ src }}" onLoadedMetadata="{{ onMeta }}" onEnded="{{ onEnded }}" onClick="{{ play }}" playsInline="{{ true }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:pointer"></video>
+</sc-if>
+<sc-if value="{{ noSrc }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ play }}" style="position:relative;width:min(100cqw, calc(100cqh * 16 / 9));aspect-ratio:16/9;background:{{ vBg }};cursor:pointer;overflow:hidden">
+<div style="position:absolute;left:16px;top:16px;width:14px;height:14px;border-left:1.5px solid rgba(20,24,31,.3);border-top:1.5px solid rgba(20,24,31,.3)"></div>
+<div style="position:absolute;right:16px;top:16px;width:14px;height:14px;border-right:1.5px solid rgba(20,24,31,.3);border-top:1.5px solid rgba(20,24,31,.3)"></div>
+<div style="position:absolute;left:16px;bottom:16px;width:14px;height:14px;border-left:1.5px solid rgba(20,24,31,.3);border-bottom:1.5px solid rgba(20,24,31,.3)"></div>
+<div style="position:absolute;right:16px;bottom:16px;width:14px;height:14px;border-right:1.5px solid rgba(20,24,31,.3);border-bottom:1.5px solid rgba(20,24,31,.3)"></div>
+<div style="position:absolute;left:40px;top:34px;right:40px;display:flex;justify-content:space-between;font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.08em;color:#2A3240;font-variant-numeric:tabular-nums">
+<span>{{ vN }}</span><span>{{ tNow }}</span>
+</div>
+<div style="position:absolute;left:40px;right:40px;bottom:32px;display:flex;flex-direction:column;gap:14px">
+<div style="max-width:88%;font-family:'Instrument Serif',serif;font-synthesis:none;font-size:clamp(20px, 3.6cqw, 44px);line-height:1;letter-spacing:-0.01em;color:#14181F;text-wrap:balance">{{ vD }}</div>
+<div style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.08em;color:#4A5464;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sample · drop a video for real footage</div>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div style="flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+<button onClick="{{ back10 }}" title="Back 10 s (J)" style="width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A5464" style-hover="background:#FFFFFF;color:#14181F"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"></path></svg></button>
+<button onClick="{{ backFrame }}" title="Previous frame (←)" style="width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A5464" style-hover="background:#FFFFFF;color:#14181F"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="m15 18-6-6 6-6"></path></svg></button>
+<button onClick="{{ play }}" title="Play / pause (Space)" style="width:38px;height:38px;border-radius:50%;border:none;background:#2563EB;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#1D4FD8">
+<sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg></sc-if>
+<sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:currentColor;margin-left:2px"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"></path></svg></sc-if>
+</button>
+<button onClick="{{ fwdFrame }}" title="Next frame (→)" style="width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A5464" style-hover="background:#FFFFFF;color:#14181F"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="m9 18 6-6-6-6"></path></svg></button>
+<button onClick="{{ fwd10 }}" title="Forward 10 s (L)" style="width:32px;height:32px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A5464" style-hover="background:#FFFFFF;color:#14181F"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="m6 17 5-5-5-5M13 17l5-5-5-5"></path></svg></button>
+<div style="display:flex;align-items:baseline;gap:6px;margin-left:8px;font-variant-numeric:tabular-nums;white-space:nowrap">
+<span style="font-size:16px;font-weight:500">{{ tNow }}</span>
+<span style="font-size:12.5px;color:#6B7584">/ {{ tDur }}</span>
+</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:8px;color:#6B7584;font-size:11.5px">
+<span>Find</span><span style="font-size:10.5px;padding:1px 6px;border:1px solid #D0D7E2;border-radius:4px;color:#4A5464;font-stretch:87%">{{ modK }}</span>
+<span style="margin-left:6px">Play</span><span style="font-size:10.5px;padding:1px 6px;border:1px solid #D0D7E2;border-radius:4px;color:#4A5464;font-stretch:87%">Space</span>
+</div>
+</div>
+
+<div style="flex:none;display:flex;gap:10px;padding:14px 18px 16px 14px;border-radius:14px;border:1px solid #E4E9F0;background:#FFFFFF;box-shadow:0 1px 2px rgba(20,24,31,.04),0 8px 24px rgba(20,24,31,.04);user-select:none">
+<div style="width:52px;flex:none;display:flex;flex-direction:column;gap:6px;font-size:10px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">
+<div style="height:16px"></div>
+<sc-if value="{{ frameStrip }}" hint-placeholder-val="{{ true }}"><div style="height:42px;display:flex;align-items:center">Picture</div></sc-if>
+<div style="height:14px;display:flex;align-items:center">Speech</div>
+</div>
+<div ref="{{ trackRef }}" onPointerDown="{{ onTrackDown }}" style="flex:1;min-width:0;position:relative;display:flex;flex-direction:column;gap:6px;cursor:pointer;touch-action:none">
+<div style="height:16px;position:relative">
+<sc-for list="{{ ruler }}" as="m" hint-placeholder-count="6">
+<div style="position:absolute;left:{{ m.l }};top:0;bottom:0;border-left:1px solid #D9E0EA;padding-left:4px;font-size:10px;color:#6B7584;font-variant-numeric:tabular-nums;line-height:12px">{{ m.label }}</div>
+</sc-for>
+</div>
+<sc-if value="{{ frameStrip }}" hint-placeholder-val="{{ true }}">
+<div style="height:42px;position:relative;border-radius:4px;overflow:hidden;background:#EAEEF4">
+<sc-for list="{{ scenes }}" as="s" hint-placeholder-count="12">
+<div style="position:absolute;top:0;bottom:0;left:{{ s.l }};width:{{ s.w }};background:{{ s.bg }};border-right:1px solid #EAEEF4;overflow:hidden">
+<span style="position:absolute;left:4px;bottom:3px;font-size:9.5px;font-weight:600;font-stretch:80%;color:#2A3240;font-variant-numeric:tabular-nums">{{ s.n }}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<div style="height:14px;position:relative">
+<sc-for list="{{ segsAll }}" as="g" hint-placeholder-count="20">
+<div style="position:absolute;top:3px;height:8px;border-radius:2px;left:{{ g.l }};width:{{ g.w }};background:{{ g.c }};opacity:0.8"></div>
+</sc-for>
+</div>
+<sc-if value="{{ hasRange }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:16px;bottom:-4px;left:{{ rL }};width:{{ rW }};background:rgba(37,99,235,0.10);border-left:2px solid #2563EB;border-right:2px solid #2563EB;pointer-events:none"></div>
+</sc-if>
+<sc-for list="{{ results }}" as="r" hint-placeholder-count="0">
+<div style="position:absolute;top:-1px;left:{{ r.l }};transform:translateX(-50%);width:15px;height:15px;border-radius:50%;background:#14181F;color:#FFFFFF;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;pointer-events:none;box-shadow:0 0 0 2px #FFFFFF">{{ r.n }}</div>
+</sc-for>
+<div style="position:absolute;top:0;bottom:-4px;left:{{ playL }};width:2px;margin-left:-1px;background:#2563EB;pointer-events:none;box-shadow:0 0 0 1px rgba(255,255,255,.9)"></div>
+</div>
+</div>
+
+<div style="flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:36px">
+<sc-if value="{{ hasBusy }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1 1 240px;display:flex;align-items:center;gap:12px">
+<span style="font-size:12.5px;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums">{{ busyLabel }}</span>
+<div style="flex:1;height:3px;border-radius:2px;background:#E4E9F0;overflow:hidden"><div style="height:100%;width:{{ busyW }};background:#2563EB"></div></div>
+</div>
+</sc-if>
+<sc-if value="{{ idle }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1 1 240px;min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<sc-if value="{{ hasRange }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#2563EB">Range</span>
+<span style="font-size:13px;font-weight:500;font-variant-numeric:tabular-nums">{{ inStr }} → {{ outStr }}</span>
+<span style="font-size:12px;color:#6B7584;font-variant-numeric:tabular-nums">{{ lenStr }}</span>
+<button onClick="{{ clearRange }}" style="border:none;background:transparent;color:#6B7584;cursor:pointer;font-size:12px;padding:2px 4px" style-hover="color:#14181F">Clear</button>
+</sc-if>
+<sc-if value="{{ noRange }}" hint-placeholder-val="{{ true }}">
+<span style="font-size:12px;color:#6B7584">Drag across the timeline to select, or set in and out with</span>
+<span style="font-size:10.5px;padding:1px 6px;border:1px solid #D0D7E2;border-radius:4px;color:#4A5464;font-stretch:87%">I</span>
+<span style="font-size:10.5px;padding:1px 6px;border:1px solid #D0D7E2;border-radius:4px;color:#4A5464;font-stretch:87%">O</span>
+</sc-if>
+</div>
+</sc-if>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button onClick="{{ clipVideo }}" style="display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:6px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-size:12.5px;font-weight:500" style-hover="background:#EEF2F7">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M7 3v18M17 3v18M3 12h18M3 7.5h4M3 16.5h4M17 7.5h4M17 16.5h4"></path></svg>Clip video</button>
+<button onClick="{{ clipAudio }}" style="display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:6px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-size:12.5px;font-weight:500" style-hover="background:#EEF2F7">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"></path></svg>Extract audio</button>
+<button onClick="{{ saveFrame }}" style="display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:6px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-size:12.5px;font-weight:500" style-hover="background:#EEF2F7">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"></path></svg>Save frame</button>
+</div>
+</div>
+
+</div>
+
+<div style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;border-left:1px solid #E4E9F0;background:#FAFBFD">
+<div style="flex:none;padding:20px 20px 0">
+<div style="display:flex;gap:2px;padding:3px;border-radius:10px;background:#EEF2F7;border:1px solid #E4E9F0">
+<sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="4">
+<button onClick="{{ tb.onClick }}" style="flex:1 1 auto;height:28px;padding:0 10px;border:none;border-radius:6px;background:{{ tb.bg }};color:{{ tb.col }};box-shadow:{{ tb.sh }};cursor:pointer;font-size:12.5px;font-weight:500;white-space:nowrap">{{ tb.label }}</button>
+</sc-for>
+</div>
+</div>
+
+<sc-if value="{{ hasProc }}" hint-placeholder-val="{{ false }}">
+<div style="flex:none;margin:14px 20px 0;padding:14px;border-radius:12px;background:#FFFFFF;border:1px solid #E4E9F0;box-shadow:0 1px 2px rgba(20,24,31,.04);display:flex;flex-direction:column;gap:9px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">Indexing on this device</span>
+<sc-for list="{{ procSteps }}" as="p" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12.5px">
+<span style="width:7px;height:7px;border-radius:50%;background:{{ p.dot }};flex:none"></span>
+<span style="color:{{ p.col }};font-weight:500">{{ p.label }}</span>
+<span style="margin-left:auto;font-size:11.5px;color:#6B7584;font-variant-numeric:tabular-nums">{{ p.right }}</span>
+</div>
+<div style="height:2px;border-radius:2px;background:#E4E9F0;overflow:hidden;margin-left:15px"><div style="height:100%;width:{{ p.w }};background:{{ p.dot }}"></div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="flex:1 1 auto;min-height:440px;position:relative">
+<div style="position:absolute;inset:0;overflow:auto;padding:20px 20px 32px">
+
+<sc-if value="{{ tabFind }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:flex-end;gap:10px;border-bottom:1px solid #D9E0EA" style-focus-within="border-color:#2563EB">
+<input ref="{{ qRef }}" value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onQKey }}" placeholder="Describe a moment…" spellcheck="false" style="flex:1;min-width:0;font-family:'Instrument Serif',serif;font-synthesis:none;font-size:32px;line-height:1.1;padding:4px 0 10px;background:transparent;border:none;outline:none;color:#14181F">
+<button onClick="{{ doSearch }}" title="Search (Enter)" style="flex:none;width:32px;height:32px;margin-bottom:8px;border-radius:6px;border:none;background:#2563EB;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#1D4FD8"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></button>
+</div>
+<div style="font-size:12px;color:#4A5464;line-height:1.5;text-wrap:pretty">Searches what's said and what's on screen. Nothing leaves this machine.</div>
+
+<sc-if value="{{ showSuggest }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">Try</span>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="4">
+<button onClick="{{ sg.onClick }}" style="padding:7px 12px;border-radius:999px;border:1px solid #DCE3EC;background:#FFFFFF;cursor:pointer;font-size:12.5px;color:#2A3240;text-align:left" style-hover="background:#EAF1FF;color:#1D4FD8">{{ sg.label }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ searching }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+{{ scanBar }}
+<span style="font-size:12.5px;color:#4A5464">Looking through {{ tDur }} of speech and picture…</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">{{ resultHead }}</span>
+<sc-for list="{{ results }}" as="r" hint-placeholder-count="3">
+<div onClick="{{ r.onClick }}" style="display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:10px;border-radius:12px;background:#FFFFFF;border:1px solid #E4E9F0;box-shadow:0 1px 2px rgba(20,24,31,.04);cursor:pointer" style-hover="background:#F3F6FB">
+<div style="position:relative;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:{{ r.bg }};align-self:start">
+<span style="position:absolute;left:4px;top:4px;width:16px;height:16px;border-radius:50%;background:#14181F;color:#FFFFFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ r.n }}</span>
+</div>
+<div style="min-width:0;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ r.time }}</span>
+<span style="font-size:10px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#4A5464">{{ r.kind }}</span>
+<span style="margin-left:auto;font-size:11.5px;color:#6B7584;font-variant-numeric:tabular-nums">{{ r.conf }}</span>
+</div>
+<div style="font-size:13.5px;line-height:1.4;color:#14181F;text-wrap:pretty">{{ r.title }}</div>
+<div style="font-size:12px;line-height:1.4;color:#4A5464;text-wrap:pretty">{{ r.snip }}</div>
+</div>
+</div>
+</sc-for>
+<span style="font-size:11.5px;color:#6B7584;margin-top:2px">Selecting a result sets a range there, ready to clip.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+<span style="font-family:'Instrument Serif',serif;font-synthesis:none;font-size:26px;line-height:1.05">Nothing matched <i>{{ lastQ }}</i></span>
+<span style="font-size:12.5px;color:#4A5464;line-height:1.5;text-wrap:pretty">Try describing what's on screen — a person, an object, a slide — or a phrase someone says.</span>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ tabTranscript }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">{{ segInfo }}</span>
+<button onClick="{{ exportTxt }}" style="margin-left:auto;height:26px;padding:0 9px;border-radius:5px;border:1px solid #D9E0EA;background:transparent;cursor:pointer;font-size:11.5px;font-weight:500" style-hover="background:#FFFFFF">.txt</button>
+<button onClick="{{ exportSrt }}" style="height:26px;padding:0 9px;border-radius:5px;border:1px solid #D9E0EA;background:transparent;cursor:pointer;font-size:11.5px;font-weight:500" style-hover="background:#FFFFFF">.srt</button>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;margin:0 -8px">
+<sc-for list="{{ segsAll }}" as="g" hint-placeholder-count="8">
+<div onClick="{{ g.onClick }}" style="display:grid;grid-template-columns:46px minmax(0,1fr);gap:10px;padding:8px;border-radius:6px;background:{{ g.bg }};cursor:pointer" style-hover="background:#F3F6FA">
+<span style="font-size:11.5px;font-weight:500;color:{{ g.tc }};font-variant-numeric:tabular-nums;padding-top:1px">{{ g.time }}</span>
+<div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+<span style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#4A5464"><span style="width:6px;height:6px;border-radius:50%;background:{{ g.c }}"></span>{{ g.spk }}</span>
+<span style="font-size:13.5px;line-height:1.5;color:#14181F;text-wrap:pretty">{{ g.x }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tabShow }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:center;gap:8px">
+<span style="font-size:12px;color:#4A5464;line-height:1.5;text-wrap:pretty;flex:1">Transcript with a key frame pulled at every scene change, so each line has its picture.</span>
+<button onClick="{{ exportTxt }}" style="flex:none;height:26px;padding:0 9px;border-radius:5px;border:1px solid #D9E0EA;background:transparent;cursor:pointer;font-size:11.5px;font-weight:500" style-hover="background:#FFFFFF">.txt</button>
+</div>
+<sc-for list="{{ scenes }}" as="s" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div onClick="{{ s.onClick }}" style="position:relative;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:{{ s.bg }};cursor:pointer;outline:2px solid {{ s.ring }};outline-offset:2px">
+<div style="position:absolute;left:10px;top:9px;right:10px;display:flex;justify-content:space-between;font-size:10px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.08em;color:#2A3240;font-variant-numeric:tabular-nums"><span style="padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.88)">Key frame {{ s.n }}</span><span style="padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.88)">{{ s.time }}</span></div>
+</div>
+<div style="font-family:'Instrument Serif',serif;font-synthesis:none;font-size:22px;line-height:1.1;color:#14181F;text-wrap:balance">{{ s.d }}</div>
+<div style="display:flex;flex-direction:column;gap:2px;margin:0 -8px">
+<sc-for list="{{ s.segs }}" as="g" hint-placeholder-count="2">
+<div onClick="{{ g.onClick }}" style="display:grid;grid-template-columns:46px minmax(0,1fr);gap:10px;padding:6px 8px;border-radius:6px;background:{{ g.bg }};cursor:pointer" style-hover="background:#F3F6FA">
+<span style="font-size:11.5px;font-weight:500;color:{{ g.tc }};font-variant-numeric:tabular-nums;padding-top:1px">{{ g.time }}</span>
+<span style="font-size:13px;line-height:1.5;color:#14181F;text-wrap:pretty"><span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:{{ g.c }};margin-right:6px">{{ g.first }}</span>{{ g.x }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ tabClips }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{ noClips }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px;padding-top:24px">
+<span style="font-family:'Instrument Serif',serif;font-synthesis:none;font-size:30px;line-height:1">No clips <i>yet</i></span>
+<span style="font-size:12.5px;color:#4A5464;line-height:1.5;max-width:34ch;text-wrap:pretty">Select a range on the timeline, then clip it as video, pull the audio, or save the frame under the playhead.</span>
+</div>
+</sc-if>
+<sc-for list="{{ clips }}" as="c" hint-placeholder-count="0">
+<div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:#FFFFFF;border:1px solid #E4E9F0;box-shadow:0 1px 2px rgba(20,24,31,.04)">
+<div style="width:34px;height:34px;flex:none;border-radius:6px;background:#EEF2F7;display:flex;align-items:center;justify-content:center;color:#2563EB">
+<sc-if value="{{ c.isVideo }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M7 3v18M17 3v18M3 12h18M3 7.5h4M3 16.5h4M17 7.5h4M17 16.5h4"></path></svg></sc-if>
+<sc-if value="{{ c.isAudio }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"></path></svg></sc-if>
+<sc-if value="{{ c.isFrame }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"></path></svg></sc-if>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:500;font-variant-numeric:tabular-nums">{{ c.title }}</span>
+<span style="font-size:11.5px;color:#6B7584;font-variant-numeric:tabular-nums">{{ c.meta }}</span>
+</div>
+<sc-if value="{{ c.hasUrl }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ c.onDownload }}" title="Download" style="width:30px;height:30px;border-radius:6px;border:1px solid #D9E0EA;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#EEF2F7"><svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"></path></svg></button>
+</sc-if>
+<button onClick="{{ c.onSeek }}" title="Jump to clip" style="height:30px;padding:0 9px;border-radius:6px;border:none;background:transparent;cursor:pointer;font-size:12px;color:#4A5464" style-hover="background:#EEF2F7;color:#14181F">Jump</button>
+<button onClick="{{ c.onRemove }}" title="Remove" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7584" style-hover="background:#EEF2F7;color:#14181F"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+
+</div>
+
+<sc-if value="{{ dlOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeDl }}" style="position:fixed;inset:0;z-index:20;background:rgba(20,24,31,0.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding:9vh 16px 16px;overflow:auto">
+<div onClick="{{ stop }}" style="width:min(580px, 100%);background:#FFFFFF;border-radius:20px;box-shadow:0 1px 2px rgba(20,24,31,.06),0 28px 72px rgba(20,24,31,.18);padding:32px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:flex-start;gap:16px">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px">
+<span style="font-family:'Instrument Serif',serif;font-synthesis:none;font-size:38px;line-height:0.95;letter-spacing:-0.01em;color:#14181F">Download a <i>video</i></span>
+<span style="font-size:13px;line-height:1.5;color:#4A5464;text-wrap:pretty">Paste a link. The file downloads on this machine, then opens here to be transcribed and indexed.</span>
+</div>
+<button onClick="{{ closeDl }}" title="Close (Esc)" style="width:32px;height:32px;flex:none;border-radius:8px;border:none;background:#F3F5F9;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A5464" style-hover="background:#E4E9F0;color:#14181F"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+</div>
+<div style="display:flex;gap:8px">
+<input ref="{{ dlRef }}" value="{{ dlUrl }}" onChange="{{ onDlUrl }}" onKeyDown="{{ onDlKey }}" placeholder="https://…" spellcheck="false" style="flex:1;min-width:0;height:46px;padding:0 14px;border-radius:12px;border:1px solid #D9E0EA;background:#FFFFFF;font-family:Archivo,ui-sans-serif,system-ui,sans-serif;font-size:14.5px;color:#14181F;outline:none" style-focus="border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.14)">
+<button onClick="{{ fetchInfo }}" style="height:46px;padding:0 18px;border-radius:12px;border:none;background:#14181F;color:#FFFFFF;cursor:pointer;font-size:13.5px;font-weight:500" style-hover="background:#2A3240">Get video</button>
+</div>
+<sc-if value="{{ dlIdle }}" hint-placeholder-val="{{ true }}">
+<span style="font-size:12.5px;color:#6B7584;line-height:1.5;margin-top:-10px;text-wrap:pretty">Works with direct files (.mp4, .webm, .mov) and links from most video sites.</span>
+</sc-if>
+<sc-if value="{{ dlHasErr }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:12.5px;color:#B42318;line-height:1.5;margin-top:-10px;text-wrap:pretty">{{ dlErr }}</span>
+</sc-if>
+<sc-if value="{{ dlFetching }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px">{{ scanBar }}<span style="font-size:12.5px;color:#4A5464">Reading the link…</span></div>
+</sc-if>
+<sc-if value="{{ dlHasInfo }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="display:grid;grid-template-columns:136px minmax(0,1fr);gap:16px;align-items:center">
+<div style="position:relative;aspect-ratio:16/9;border-radius:10px;background:{{ dlThumbBg }};overflow:hidden">
+<span style="position:absolute;right:6px;bottom:6px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.9);font-size:10.5px;font-weight:600;color:#2A3240;font-variant-numeric:tabular-nums">{{ dlDur }}</span>
+</div>
+<div style="min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:15px;font-weight:500;color:#14181F;line-height:1.35;overflow-wrap:anywhere">{{ dlTitle }}</span>
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">{{ dlMeta }}</span>
+</div>
+</div>
+<sc-if value="{{ dlIsInfo }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:18px">
+<sc-if value="{{ dlShowOpts }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">Quality</span>
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));gap:8px">
+<sc-for list="{{ dlQs }}" as="o" hint-placeholder-count="4">
+<button onClick="{{ o.onClick }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:10px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.col }};cursor:pointer;text-align:left">
+<span style="font-size:13px;font-weight:500">{{ o.label }}</span>
+<span style="font-size:11.5px;opacity:.8;font-variant-numeric:tabular-nums">{{ o.sub }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">Format</span>
+<div style="display:flex;gap:2px;padding:3px;border-radius:10px;background:#EEF2F7;align-self:flex-start">
+<sc-for list="{{ dlFs }}" as="o" hint-placeholder-count="2">
+<button onClick="{{ o.onClick }}" style="height:28px;padding:0 14px;border:none;border-radius:7px;background:{{ o.bg }};color:{{ o.col }};box-shadow:{{ o.sh }};cursor:pointer;font-size:12.5px;font-weight:500">{{ o.label }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ dlDirect }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:12.5px;color:#4A5464;line-height:1.5">Direct file link. It downloads as-is, in its original quality and format.</span>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;background:#F5F7FA">
+<div style="display:flex;align-items:baseline;gap:10px;min-width:0">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584;flex:none">Save to</span>
+<span style="font-size:12.5px;color:#2A3240;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ dlSaveTo }}</span>
+</div>
+<button onClick="{{ toggleOpenAfter }}" style="display:flex;align-items:center;gap:10px;border:none;background:transparent;padding:0;cursor:pointer;text-align:left;font-size:13px;color:#14181F">
+<span style="width:18px;height:18px;flex:none;border-radius:5px;border:1.5px solid {{ dlChkBd }};background:{{ dlChkBg }};display:flex;align-items:center;justify-content:center;color:#FFFFFF">
+<sc-if value="{{ dlOpenAfter }}" hint-placeholder-val="{{ true }}"><svg width="12" height="12" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+</span>
+Open, transcribe and index when done
+</button>
+</div>
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<span style="flex:1 1 200px;font-size:11.5px;color:#6B7584;line-height:1.5;text-wrap:pretty">Only download videos you own or have permission to use.</span>
+<button onClick="{{ startDl }}" style="display:flex;align-items:center;gap:8px;height:42px;padding:0 20px;border-radius:12px;border:none;background:#2563EB;color:#FFFFFF;cursor:pointer;font-size:13.5px;font-weight:500;box-shadow:0 1px 2px rgba(37,99,235,.3),0 6px 16px rgba(37,99,235,.22)" style-hover="background:#1D4FD8">
+<svg width="15" height="15" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"></path></svg>Download</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ dlIsDownloading }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+<span style="font-size:30px;font-weight:500;letter-spacing:-0.01em;color:#14181F;font-variant-numeric:tabular-nums">{{ dlPctStr }}</span>
+<span style="font-size:12.5px;color:#4A5464;font-variant-numeric:tabular-nums">{{ dlDetail }}</span>
+<button onClick="{{ cancelDl }}" style="margin-left:auto;height:30px;padding:0 12px;border-radius:8px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-size:12.5px;color:#2A3240" style-hover="background:#F3F5F9">Cancel</button>
+</div>
+<div style="height:6px;border-radius:999px;background:#EEF2F7;overflow:hidden"><div style="height:100%;width:{{ dlBarW }};border-radius:999px;background:#2563EB"></div></div>
+<span style="font-size:11.5px;color:#6B7584">You can close this window. The download keeps going.</span>
+</div>
+</sc-if>
+<sc-if value="{{ dlIsDone }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<span style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:#1F7A47"><svg width="16" height="16" viewBox="0 0 24 24" style="fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M20 6 9 17l-5-5"></path></svg>Saved to {{ dlSaveTo }}</span>
+<button onClick="{{ openLast }}" style="margin-left:auto;height:40px;padding:0 18px;border-radius:12px;border:none;background:#2563EB;color:#FFFFFF;cursor:pointer;font-size:13.5px;font-weight:500" style-hover="background:#1D4FD8">Open in Scrubber</button>
+</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ dlHasRecent }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:6px;padding-top:18px;border-top:1px solid #EEF2F7">
+<span style="font-size:10.5px;font-weight:600;font-stretch:80%;text-transform:uppercase;letter-spacing:0.07em;color:#6B7584">Recent downloads</span>
+<sc-for list="{{ dlRecent }}" as="d" hint-placeholder-count="0">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:500;color:#14181F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.title }}</span>
+<span style="font-size:11.5px;color:#6B7584;font-variant-numeric:tabular-nums">{{ d.meta }}</span>
+</div>
+<button onClick="{{ d.onOpen }}" style="height:30px;padding:0 12px;border-radius:8px;border:1px solid #D9E0EA;background:#FFFFFF;cursor:pointer;font-size:12.5px;color:#2A3240" style-hover="background:#F3F5F9">Open</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<input ref="{{ fileRef }}" type="file" accept="video/*" onChange="{{ onFile }}" style="display:none">
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:min(520px, calc(100vw - 32px));padding:10px 16px;border-radius:8px;background:#14181F;border:1px solid #14181F;box-shadow:0 12px 32px rgba(20,24,31,.18);font-size:12.5px;color:#FFFFFF;z-index:10;text-wrap:pretty">{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;os&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;macOS&quot;,&quot;Windows&quot;,&quot;Linux&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Platform&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;find&quot;,&quot;transcript&quot;,&quot;show&quot;,&quot;clips&quot;],&quot;default&quot;:&quot;find&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;frameStrip&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+const DUR = 754;
+const SCENES = [
+  [0, 'Title card reading “Onboarding v3 — design review” on a shared screen', 28],
+  [38, 'Maya on camera in front of a kitchen shelf, holding a coffee mug', 32],
+  [96, 'Screen share of the design file: five onboarding screens side by side', 210],
+  [168, 'Close-up of the welcome screen and its illustrated plant', 140],
+  [231, 'Line chart of day-one drop-off by step, with a sharp dip at step three', 12],
+  [298, 'Jonah holds his phone up to the webcam, running the prototype', 200],
+  [362, 'Phone screen showing the camera permission prompt', 190],
+  [421, 'Whiteboard sketch of three pricing tiers drawn in marker', 45],
+  [487, 'Gallery view: all three people laughing, a cat on Jonah’s desk', 300],
+  [552, 'Roadmap slide of Q4 milestones, one crossed out in red', 0],
+  [618, 'Priya reading from her notes while a dog walks across the frame', 90],
+  [690, 'Closing slide listing action items and owners', 25],
+].map(([t, d, h], i) => ({ t, d, h, i }));
+const SPEAKERS = { M: { n: 'Maya Chen', c: '#D9773F' }, J: { n: 'Jonah Park', c: '#2F7BC4' }, P: { n: 'Priya Raman', c: '#5E8F2E' } };
+const RAW = [
+  [2, 'M', 'Okay, I think everyone’s here. This is the design review for onboarding version three.'],
+  [14, 'P', 'Can you make the screen share a bit bigger? The text is tiny on my side.'],
+  [24, 'M', 'Better? Cool. The goal for today is to agree on the flow, not the visuals.'],
+  [40, 'M', 'Quick context. We rebuilt onboarding because sixty percent of new accounts never finish setup.'],
+  [58, 'J', 'Is that sixty percent across web and mobile, or just mobile?'],
+  [66, 'M', 'Both, but mobile is worse. I’ll show the breakdown in a minute.'],
+  [98, 'M', 'Here are all five screens. Welcome, goals, permissions, invite, and done.'],
+  [121, 'P', 'I like that invite moved later. That was the step people hated most.'],
+  [140, 'M', 'Right. And the welcome screen is now one sentence and a single button.'],
+  [170, 'M', 'This plant illustration grows as you complete each step. It’s a small reward.'],
+  [192, 'J', 'Does it animate? Because that’s going to cost us on low-end Android phones.'],
+  [205, 'M', 'It’s a sequence of four static images. No animation library.'],
+  [233, 'P', 'This is the chart that worries me. Look at step three, the drop is huge.'],
+  [252, 'M', 'Step three is permissions. We ask for the camera before people know why.'],
+  [275, 'J', 'We could defer the camera prompt until someone actually scans something.'],
+  [300, 'J', 'Let me just show you on my phone. This is the build from this morning.'],
+  [318, 'J', 'Tap get started, pick a goal, and see, no permission prompt yet.'],
+  [364, 'J', 'Now I’ll scan a receipt, and only here does it ask for camera access.'],
+  [385, 'P', 'That feels so much better. The prompt finally has a reason.'],
+  [423, 'P', 'Switching topics. Pricing. I sketched three tiers on the whiteboard.'],
+  [441, 'P', 'Free, Plus at eight dollars a month, and Team at twenty per seat.'],
+  [466, 'J', 'Should the paywall show up during onboarding at all?'],
+  [478, 'M', 'Honestly, no. Let them reach the done screen first, then mention Plus.'],
+  [490, 'J', 'Sorry, my cat just walked across the keyboard.'],
+  [520, 'P', 'Okay, so the paywall moves out of onboarding entirely. Agreed?'],
+  [554, 'M', 'Here’s the roadmap. The animated tutorial is cut from Q4.'],
+  [575, 'J', 'Good. That frees up two weeks for the camera change.'],
+  [620, 'P', 'Let me read back what I have in my notes. Hold on, the dog wants out.'],
+  [640, 'P', 'One, defer the camera prompt. Two, move invite after done. Three, no paywall in onboarding.'],
+  [692, 'M', 'Action items are on screen. Jonah owns permissions, I own the plant assets.'],
+  [715, 'P', 'And I’ll update the pricing doc by Friday. Thanks, everyone.'],
+  [735, 'M', 'Stopping the recording now.'],
+];
+const SEGS = RAW.map(([t, s, x], i) => {
+  const next = RAW[i + 1] ? RAW[i + 1][0] : DUR;
+  return { t, s, x, i, e: Math.min(next - 0.8, t + x.split(' ').length * 0.42) };
+});
+const STOP = new Set('a an the of to in on at and or is are was were be been it its this that these when where what which who whom does do did part moment someone somebody they them their there show shows showing shown find me i we you he she his her about mention mentions mentioned say says said talk talks talking scene video clip with for from up just like some any thing time point goes go get gets has have had into by how why while during one two'.split(' '));
+const SYN = {
+  mobile: ['phone'], phone: ['mobile', 'prototype'], cellphone: ['phone'], app: ['prototype', 'build'],
+  graph: ['chart'], chart: ['graph', 'drop'], stats: ['chart', 'percent'], data: ['chart', 'percent'],
+  cost: ['pricing', 'price', 'dollars'], price: ['pricing', 'tiers', 'dollars'], pricing: ['tiers', 'dollars'], money: ['dollars', 'pricing'], paywall: ['plus'], subscription: ['plus', 'tiers'],
+  laugh: ['laughing'], laughs: ['laughing'], funny: ['laughing'], joke: ['laughing'],
+  pet: ['dog', 'cat'], animal: ['dog', 'cat'], puppy: ['dog'], kitten: ['cat'],
+  board: ['whiteboard'], drawing: ['sketch', 'whiteboard', 'illustration'], sketch: ['whiteboard'],
+  camera: ['permission', 'prompt'], permission: ['camera', 'prompt'], permissions: ['camera', 'prompt'],
+  demo: ['prototype', 'build'], prototype: ['phone', 'build'], coffee: ['mug'], drink: ['mug', 'coffee'],
+  summary: ['action', 'notes'], recap: ['notes', 'action'], todo: ['action', 'items'], tasks: ['action', 'items', 'owners'],
+  plan: ['roadmap', 'milestones'], schedule: ['roadmap'], cut: ['crossed', 'cut'], removed: ['cut', 'crossed'],
+  start: ['title', 'everyone'], intro: ['title'], end: ['closing', 'thanks', 'stopping'], goodbye: ['thanks', 'stopping'],
+  plant: ['illustration'], screens: ['screen'], drop: ['drop', 'dip'], dropoff: ['drop', 'dip'],
+};
+const pad = n => String(n).padStart(2, '0');
+const fmt = t => { t = Math.max(0, t || 0); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = Math.floor(t % 60); return (h ? h + ':' + pad(m) : pad(m)) + ':' + pad(s); };
+const fmtD = t => fmt(t) + '.' + Math.floor(((t || 0) % 1) * 10);
+const fmtSize = b => b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sceneAt = t => { let i = 0; SCENES.forEach(s => { if (s.t <= t + 0.001) i = s.i; }); return i; };
+const segAt = t => { let i = -1; SEGS.forEach(g => { if (g.t <= t + 0.001) i = g.i; }); return i; };
+const stem = w => w.length <= 4 ? w : w.slice(0, Math.max(4, w.length - 3));
+const toks = s => s.toLowerCase().replace(/[’']/g, '').match(/[a-z0-9]+/g) || [];
+
+function search(q) {
+  const words = toks(q).filter(w => !STOP.has(w));
+  if (!words.length) return [];
+  const stems = [];
+  words.forEach(w => { stems.push(stem(w)); (SYN[w] || []).forEach(s => stems.push(stem(s))); });
+  const uniq = [...new Set(stems)];
+  const hits = text => { const tk = toks(text); return uniq.filter(st => tk.some(t => t.startsWith(st))).length; };
+  const c = [];
+  SCENES.forEach(s => { const h = hits(s.d); if (h) c.push({ t: s.t, kind: 'Picture', title: s.d, snip: 'Key frame ' + pad(s.i + 1), score: h + 0.35, si: s.i }); });
+  SEGS.forEach(g => { const h = hits(g.x); if (h) c.push({ t: g.t, kind: 'Speech', title: '“' + g.x + '”', snip: SPEAKERS[g.s].n, score: h, si: sceneAt(g.t) }); });
+  c.sort((a, b) => b.score - a.score || a.t - b.t);
+  const out = [];
+  c.forEach(x => {
+    const near = out.find(o => Math.abs(o.t - x.t) < 30);
+    if (near) {
+      if (near.kind !== x.kind && !near.merged) { near.merged = true; near.kind = 'Picture + speech'; near.score += 0.6; near.snip = x.kind === 'Speech' ? SPEAKERS[SEGS.find(g => g.t === x.t).s].n + ': ' + x.title : x.title; }
+      return;
+    }
+    if (out.length < 5) out.push({ ...x });
+  });
+  out.sort((a, b) => b.score - a.score || a.t - b.t);
+  return out.map((r, i) => ({ ...r, conf: Math.max(41, Math.min(98, Math.round(62 + r.score * 11 - i * 6))) }));
+}
+
+class Component extends DCLogic {
+  state = { tab: null, q: '', searching: false, results: null, lastQ: '', t: 0, playing: false, dur: DUR, inT: null, outT: null, clips: [], src: null, fileName: 'Design review — Onboarding v3.mp4', fileMeta: '1920×1080 · 30 fps · sample', thumbs: {}, proc: null, toast: null, busy: null, dlOpen: false, dlUrl: '', dlPhase: 'idle', dlInfo: null, dlQ: 'Best', dlF: 'MP4', dlOpenAfter: true, dlGot: 0, dlTotal: 0, dlSpeed: 0, dlErr: '', downloads: [] };
+  videoRef = React.createRef(); fileRef = React.createRef(); trackRef = React.createRef(); qRef = React.createRef(); dlRef = React.createRef();
+
+  componentDidMount() {
+    this.iv = setInterval(() => { const s = this.state; if (s.playing && !s.src) { const t = Math.min(s.dur, s.t + 0.1); this.setState({ t, playing: t < s.dur }); } }, 100);
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentDidUpdate() { const v = this.videoRef.current; if (v && v !== this.boundV) { this.boundV = v; v.addEventListener('error', this.onVideoError); } }
+  componentWillUnmount() { clearInterval(this.iv); window.removeEventListener('keydown', this.onKey); cancelAnimationFrame(this.raf); }
+  k() { return this.state.dur / DUR; }
+  os() { const o = this.props.os ?? 'auto'; if (o !== 'auto') return o; const u = navigator.userAgent; return /Mac|iPhone|iPad/.test(u) ? 'macOS' : /Win/.test(u) ? 'Windows' : 'Linux'; }
+  toast(msg) { clearTimeout(this.tt); this.setState({ toast: msg }); this.tt = setTimeout(() => this.setState({ toast: null }), 3200); }
+  download(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+
+  seek = t => { t = Math.max(0, Math.min(this.state.dur, t)); const v = this.videoRef.current; if (this.state.src && v) v.currentTime = t; this.setState({ t }); };
+  play = () => {
+    const s = this.state, v = this.videoRef.current;
+    if (s.busy) return;
+    if (s.playing) { if (s.src && v) v.pause(); this.setState({ playing: false }); return; }
+    const t = s.t >= s.dur - 0.05 ? 0 : s.t;
+    if (s.src && v) { v.currentTime = t; v.play().catch(() => this.setState({ playing: false })); this.loop(); }
+    this.setState({ playing: true, t });
+  };
+  loop = () => {
+    cancelAnimationFrame(this.raf);
+    const f = () => { const v = this.videoRef.current; if (!v) return; this.setState({ t: v.currentTime }); if (!v.paused && !v.ended) this.raf = requestAnimationFrame(f); else this.setState({ playing: false }); };
+    this.raf = requestAnimationFrame(f);
+  };
+  onKey = e => {
+    if (this.state.dlOpen) { if (e.key === 'Escape') this.closeDl(); return; }
+    const tag = (e.target.tagName || '').toLowerCase(), mod = e.metaKey || e.ctrlKey, s = this.state;
+    if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); this.focusFind(); return; }
+    if (tag === 'input' || tag === 'textarea') { if (e.key === 'Escape') e.target.blur(); return; }
+    if (mod) return;
+    const step = e.shiftKey ? 5 : 1 / 30;
+    switch (e.key) {
+      case ' ': e.preventDefault(); this.play(); break;
+      case 'i': case 'I': this.setIn(); break;
+      case 'o': case 'O': this.setOut(); break;
+      case 'ArrowLeft': e.preventDefault(); this.seek(s.t - step); break;
+      case 'ArrowRight': e.preventDefault(); this.seek(s.t + step); break;
+      case 'j': case 'J': this.seek(s.t - 10); break;
+      case 'l': case 'L': this.seek(s.t + 10); break;
+      case '/': e.preventDefault(); this.focusFind(); break;
+      case 'Escape': this.setState({ inT: null, outT: null }); break;
+    }
+  };
+  focusFind = () => this.setState({ tab: 'find' }, () => this.qRef.current && this.qRef.current.focus());
+  setIn = () => { const { t, outT, dur } = this.state; this.setState({ inT: t, outT: outT != null && outT > t ? outT : Math.min(dur, t + 10) }); };
+  setOut = () => { const { t, inT } = this.state; this.setState({ outT: t, inT: inT != null && inT < t ? inT : Math.max(0, t - 10) }); };
+
+  onTrackDown = e => {
+    const el = this.trackRef.current; if (!el || this.state.busy) return;
+    const r = el.getBoundingClientRect();
+    const toT = x => Math.max(0, Math.min(1, (x - r.left) / r.width)) * this.state.dur;
+    const x0 = e.clientX, t0 = toT(x0); let drag = false;
+    this.seek(t0);
+    const mv = ev => { if (!drag && Math.abs(ev.clientX - x0) > 4) drag = true; if (drag) { const t = toT(ev.clientX); this.setState({ inT: Math.min(t0, t), outT: Math.max(t0, t) }); this.seek(t); } };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  };
+
+  runSearch = q => {
+    q = (q ?? this.state.q).trim(); if (!q) { this.qRef.current && this.qRef.current.focus(); return; }
+    if (this.state.proc) { this.toast('Still indexing — search will be ready in a moment'); return; }
+    this.setState({ q, searching: true, results: null, lastQ: q, tab: 'find' });
+    clearTimeout(this.st);
+    this.st = setTimeout(() => this.setState({ searching: false, results: search(q) }), 650 + Math.random() * 450);
+  };
+
+  openFile = () => this.fileRef.current && this.fileRef.current.click();
+  onFile = e => { const f = e.target.files && e.target.files[0]; if (f) this.load(f); e.target.value = ''; };
+  onDrop = e => { e.preventDefault(); const f = [...(e.dataTransfer.files || [])].find(f => /^video\//.test(f.type)); if (f) this.load(f); else this.toast('Drop a video file to open it'); };
+  onDragOver = e => e.preventDefault();
+  load(f) {
+    this.tok = (this.tok || 0) + 1;
+    if (this.state.src) URL.revokeObjectURL(this.state.src);
+    cancelAnimationFrame(this.raf);
+    this.setState({ src: URL.createObjectURL(f), fileName: f.name, fileMeta: fmtSize(f.size), playing: false, t: 0, inT: null, outT: null, results: null, searching: false, thumbs: {}, proc: { step: 0, pct: 0 } });
+  }
+  onMeta = e => {
+    const v = e.target, dur = v.duration && isFinite(v.duration) ? v.duration : DUR;
+    this.setState(s => ({ dur, fileMeta: (v.videoWidth ? v.videoWidth + '×' + v.videoHeight + ' · ' : '') + s.fileMeta }));
+    this.index();
+  };
+  onEnded = () => this.setState({ playing: false });
+  onVideoError = () => { this.setState({ proc: null }); this.toast('This video format can’t be decoded here. Try MP4 (H.264) or WebM.'); };
+  async index() {
+    const src = this.state.src;
+    const run = async (step, ms) => { for (let i = 1; i <= 12; i++) { await sleep(ms / 12); if (this.state.src !== src) return false; this.setState({ proc: { step, pct: i / 12 } }); } return true; };
+    if (!await run(0, 1800)) return;
+    this.setState({ proc: { step: 1, pct: 0 } });
+    await this.extractThumbs(src);
+    if (this.state.src !== src) return;
+    if (!await run(2, 700)) return;
+    this.setState({ proc: null });
+    this.toast('Indexed. Describe a moment to find it.');
+  }
+  async extractThumbs(src) {
+    const v = document.createElement('video'); v.muted = true; v.preload = 'auto'; v.src = src;
+    try { await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = rej; setTimeout(rej, 8000); }); } catch (e) { return; }
+    const c = document.createElement('canvas'); c.width = 320; c.height = Math.round(320 * ((v.videoHeight / v.videoWidth) || 0.5625));
+    const ctx = c.getContext('2d'), k = v.duration / DUR;
+    for (const s of SCENES) {
+      if (this.state.src !== src) return;
+      v.currentTime = Math.min(v.duration - 0.1, s.t * k + 0.5 * k);
+      await new Promise(r => { v.onseeked = r; setTimeout(r, 1500); });
+      try { ctx.drawImage(v, 0, 0, c.width, c.height); const u = c.toDataURL('image/jpeg', 0.78); this.setState(st => ({ thumbs: { ...st.thumbs, [s.i]: u }, proc: { step: 1, pct: (s.i + 1) / SCENES.length } })); } catch (e) {}
+    }
+  }
+
+  addClip(c) { this.setState(s => ({ clips: [{ id: Date.now() + Math.random(), ...c }, ...s.clips] })); }
+  saveFrame = () => {
+    const s = this.state, v = this.videoRef.current, c = document.createElement('canvas');
+    if (s.src && v && v.videoWidth) { c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0); }
+    else {
+      c.width = 1920; c.height = 1080; const ctx = c.getContext('2d'), sc = SCENES[sceneAt(s.t / this.k())];
+      const g = ctx.createLinearGradient(0, 0, 1920, 1080); g.addColorStop(0, `hsl(${sc.h} 62% 95%)`); g.addColorStop(0.72, `hsl(${sc.h} 40% 84%)`); g.addColorStop(1, `hsl(${sc.h} 40% 84%)`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 1920, 1080); ctx.fillStyle = '#14181F'; ctx.font = '84px "Instrument Serif", serif';
+      const words = sc.d.split(' '); let line = '', lines = [];
+      words.forEach(w => { const tst = line ? line + ' ' + w : w; if (ctx.measureText(tst).width > 1400) { lines.push(line); line = w; } else line = tst; }); lines.push(line);
+      lines.forEach((l, i) => ctx.fillText(l, 134, 1080 - 160 - (lines.length - 1 - i) * 88));
+      ctx.font = '600 22px Archivo, sans-serif'; ctx.fillText('SCENE ' + pad(sc.i + 1) + '   ' + fmtD(s.t), 134, 120);
+    }
+    const name = `frame ${fmt(s.t).replace(/:/g, '-')}.png`;
+    try {
+      c.toBlob(b => { if (!b) return; const url = URL.createObjectURL(b); this.addClip({ kind: 'Frame', a: s.t, b: null, url, size: b.size, ext: 'png', name }); this.download(url, name); this.toast('Frame saved as PNG'); }, 'image/png');
+    } catch (e) { this.toast('Couldn’t read this frame'); }
+  };
+  exportRange = async kind => {
+    const s = this.state;
+    if (s.busy) return;
+    if (s.inT == null || s.outT - s.inT < 0.2) { this.toast('Select a range first: drag across the timeline, or press I and O.'); return; }
+    const a = s.inT, b = s.outT, len = b - a;
+    if (!s.src) {
+      this.setState({ busy: { kind, pct: 0 } });
+      for (let i = 1; i <= 20; i++) { await sleep(55); this.setState({ busy: { kind, pct: i / 20 } }); }
+      this.setState({ busy: null });
+      this.addClip({ kind, a, b, url: null, size: Math.round(len * (kind === 'Audio' ? 16000 : 640000)) });
+      this.toast(kind + ' clip added. This is the sample project — open a real video to export files.');
+      return;
+    }
+    const v = this.videoRef.current, cap = v && (v.captureStream || v.mozCaptureStream);
+    if (!cap || typeof MediaRecorder === 'undefined') { this.toast('This browser can’t record clips. Try Chrome, Edge or Firefox.'); return; }
+    v.pause(); v.currentTime = a;
+    await new Promise(r => { v.onseeked = () => { v.onseeked = null; r(); }; setTimeout(r, 1500); });
+    const stream = cap.call(v);
+    const tracks = kind === 'Audio' ? stream.getAudioTracks() : stream.getTracks();
+    if (kind === 'Audio' && !tracks.length) { this.toast('This video has no audio track'); return; }
+    const types = kind === 'Audio' ? ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'] : ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'];
+    const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const rec = new MediaRecorder(new MediaStream(tracks), mime ? { mimeType: mime } : undefined), chunks = [];
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    const stopped = new Promise(r => rec.onstop = r);
+    this.setState({ busy: { kind, pct: 0 } });
+    rec.start(250);
+    try { await v.play(); } catch (e) {}
+    this.setState({ playing: true }); this.loop();
+    await new Promise(r => { const chk = () => { this.setState({ busy: { kind, pct: Math.min(1, (v.currentTime - a) / len) } }); if (v.currentTime >= b || v.paused || v.ended) r(); else requestAnimationFrame(chk); }; chk(); });
+    v.pause(); rec.stop(); await stopped;
+    const type = (mime.split(';')[0]) || (kind === 'Audio' ? 'audio/webm' : 'video/webm');
+    const blob = new Blob(chunks, { type }), ext = type.includes('mp4') ? (kind === 'Audio' ? 'm4a' : 'mp4') : 'webm';
+    const url = URL.createObjectURL(blob), name = `${kind.toLowerCase()} ${fmt(a).replace(/:/g, '-')} to ${fmt(b).replace(/:/g, '-')}.${ext}`;
+    this.setState({ busy: null, playing: false });
+    this.addClip({ kind, a, b, url, size: blob.size, ext, name });
+    this.download(url, name);
+    this.toast(kind + ' clip exported');
+  };
+  exportText(srt) {
+    const k = this.k(), ts = t => { const ms = Math.floor((t % 1) * 1000); return pad(Math.floor(t / 3600)) + ':' + pad(Math.floor((t % 3600) / 60)) + ':' + pad(Math.floor(t % 60)) + ',' + String(ms).padStart(3, '0'); };
+    const body = srt
+      ? SEGS.map((g, i) => `${i + 1}\n${ts(g.t * k)} --> ${ts(g.e * k)}\n${SPEAKERS[g.s].n}: ${g.x}\n`).join('\n')
+      : SEGS.map(g => `[${fmt(g.t * k)}] ${SPEAKERS[g.s].n}: ${g.x}`).join('\n');
+    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+    this.download(url, this.state.fileName.replace(/\.[^.]+$/, '') + (srt ? '.srt' : '.txt'));
+  }
+
+  openDl = () => this.setState({ dlOpen: true }, () => setTimeout(() => this.dlRef.current && this.dlRef.current.focus(), 40));
+  closeDl = () => this.setState({ dlOpen: false });
+  saveDir() { const o = this.os(); return o === 'Windows' ? 'C:\\Users\\you\\Videos\\Video Scrubber' : o === 'Linux' ? '~/Videos/Video Scrubber' : '~/Movies/Video Scrubber'; }
+  sizeFor(q, secs) { return secs * ({ Best: 0.62, '1080p': 0.5, '720p': 0.26, 'Audio only': 0.016 }[q]) * 1e6; }
+  fetchInfo = () => {
+    const raw = this.state.dlUrl.trim(); let u;
+    try { u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw); if (!u.hostname.includes('.')) throw 0; }
+    catch (e) { this.setState({ dlPhase: 'idle', dlInfo: null, dlErr: raw ? 'That doesn’t look like a link. Paste a full URL.' : 'Paste a link first.' }); return; }
+    const direct = /\.(mp4|webm|mov|m4v|ogv)$/i.test(u.pathname), host = u.hostname.replace(/^www\./, '');
+    this.setState({ dlPhase: 'fetching', dlErr: '', dlInfo: null });
+    clearTimeout(this.dlT);
+    this.dlT = setTimeout(() => {
+      const seed = [...u.href].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+      const last = decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || host);
+      this.setState({ dlPhase: 'info', dlInfo: { href: u.href, host, direct, secs: direct ? null : 180 + (seed % 1500), title: direct ? last : 'Video from ' + host, hue: seed % 360 }, dlQ: 'Best', dlF: 'MP4' });
+    }, 800);
+  };
+  startDl = async () => {
+    const s = this.state, info = s.dlInfo; if (!info) return;
+    const audio = s.dlQ === 'Audio only';
+    const ext = info.direct ? (info.title.split('.').pop() || 'mp4') : audio ? s.dlF.toLowerCase() : s.dlF === 'WebM' ? 'webm' : 'mp4';
+    const name = info.title.replace(/\.[a-z0-9]+$/i, '') + '.' + ext;
+    this.setState({ dlPhase: 'downloading', dlGot: 0, dlTotal: 0, dlSpeed: 0, dlErr: '' });
+    const t0 = performance.now();
+    if (info.direct) {
+      const ac = new AbortController(); this.dlAbort = ac;
+      try {
+        const res = await fetch(info.href, { signal: ac.signal });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const total = +res.headers.get('content-length') || 0, reader = res.body.getReader(), chunks = []; let got = 0;
+        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; this.setState({ dlGot: got, dlTotal: total, dlSpeed: got / Math.max(0.1, (performance.now() - t0) / 1000) }); }
+        const type = res.headers.get('content-type') || 'video/mp4', blob = new Blob(chunks, { type });
+        this.finishDl({ name, size: blob.size, url: URL.createObjectURL(blob), file: new File([blob], name, { type }) });
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        this.setState({ dlPhase: 'info', dlErr: 'This server won’t hand the file to the browser directly. In the desktop app, links like this go through the local downloader.' });
+      }
+      return;
+    }
+    const total = this.sizeFor(s.dlQ, info.secs), base = total / 6; let got = 0;
+    clearInterval(this.dlI);
+    this.dlI = setInterval(() => {
+      const sp = base * (0.8 + Math.random() * 0.4); got = Math.min(total, got + sp * 0.15);
+      this.setState({ dlGot: got, dlTotal: total, dlSpeed: sp });
+      if (got >= total) { clearInterval(this.dlI); this.finishDl({ name, size: total, url: null, file: null }); }
+    }, 150);
+  };
+  cancelDl = () => { if (this.dlAbort) this.dlAbort.abort(); clearInterval(this.dlI); this.setState({ dlPhase: 'info' }); };
+  finishDl(d) {
+    const item = { id: Date.now(), host: this.state.dlInfo.host, ...d };
+    this.setState(s => ({ dlPhase: 'done', downloads: [item, ...s.downloads].slice(0, 5) }));
+    if (d.url) this.download(d.url, d.name);
+    if (this.state.dlOpenAfter) this.openDownloaded(item); else this.toast('Download finished');
+  }
+  openDownloaded = item => {
+    if (item.file) this.load(item.file);
+    else {
+      this.tok = (this.tok || 0) + 1; const tok = this.tok;
+      if (this.state.src) URL.revokeObjectURL(this.state.src);
+      cancelAnimationFrame(this.raf);
+      this.setState({ src: null, dur: DUR, fileName: item.name, fileMeta: fmtSize(item.size) + ' · downloaded', t: 0, playing: false, inT: null, outT: null, results: null, searching: false, thumbs: {}, proc: { step: 0, pct: 0 } });
+      (async () => { for (let st = 0; st < 3; st++) for (let i = 1; i <= 10; i++) { await sleep(st === 1 ? 110 : 80); if (this.tok !== tok) return; this.setState({ proc: { step: st, pct: i / 10 } }); } this.setState({ proc: null }); })();
+    }
+    this.setState({ dlOpen: false, dlPhase: 'idle', dlInfo: null, dlUrl: '' });
+    this.toast(item.file ? 'Downloaded. Indexing on this device…' : 'Downloaded. This prototype shows sample footage for site links.');
+  };
+
+  renderVals() {
+    const s = this.state, k = this.k(), dur = s.dur, os = this.os();
+    const tab = s.tab ?? this.props.startTab ?? 'find';
+    const pct = t => (Math.max(0, Math.min(1, t / dur)) * 100).toFixed(3) + '%';
+    const curScene = sceneAt(s.t / k), curSeg = segAt(s.t / k);
+    const grad = h => `linear-gradient(155deg, hsl(${h} 62% 95%), hsl(${h} 40% 84%))`;
+    const thumb = i => s.thumbs[i] || null;
+    const bgOf = (i, h) => s.thumbs[i] ? `center / cover no-repeat url("${s.thumbs[i]}")` : grad(h);
+    const segV = g => ({ time: fmt(g.t * k), spk: SPEAKERS[g.s].n, first: SPEAKERS[g.s].n.split(' ')[0], c: SPEAKERS[g.s].c, x: g.x, l: pct(g.t * k), w: pct((g.e - g.t) * k), bg: g.i === curSeg ? '#EAF1FF' : 'transparent', tc: g.i === curSeg ? '#2563EB' : '#6B7584', onClick: () => this.seek(g.t * k) });
+    const step = dur > 3600 ? 900 : dur > 1500 ? 300 : dur > 500 ? 120 : dur > 150 ? 30 : 10;
+    const ruler = []; for (let t = 0; t < dur - step * 0.4; t += step) ruler.push({ l: pct(t), label: fmt(t) });
+    const scenes = SCENES.map(sc => {
+      const end = (SCENES[sc.i + 1] ? SCENES[sc.i + 1].t : DUR) * k;
+      return { n: pad(sc.i + 1), time: fmt(sc.t * k), d: sc.d, l: pct(sc.t * k), w: pct(end - sc.t * k), bg: bgOf(sc.i, sc.h), thumb: thumb(sc.i), hasThumb: !!thumb(sc.i), ring: sc.i === curScene ? '#2563EB' : 'transparent', onClick: () => this.seek(sc.t * k + 0.01), segs: SEGS.filter(g => sceneAt(g.t) === sc.i).map(segV) };
+    });
+    const results = (s.results || []).map((r, i) => ({
+      n: i + 1, time: fmt(r.t * k), kind: r.kind, title: r.title, snip: r.snip, conf: r.conf + '% match', l: pct(r.t * k), bg: bgOf(r.si, SCENES[r.si].h), thumb: thumb(r.si), hasThumb: !!thumb(r.si),
+      onClick: () => { const a = r.t * k; this.seek(a); this.setState({ inT: a, outT: Math.min(dur, a + Math.min(30, 12 * k)) }); },
+    }));
+    const tabDefs = [['find', 'Find'], ['transcript', 'Transcript'], ['show', 'Transcribe + Show'], ['clips', 'Clips' + (s.clips.length ? ' · ' + s.clips.length : '')]];
+    const procLabels = ['Transcribing speech', 'Pulling key frames', 'Indexing picture + speech'];
+    const procSteps = s.proc ? procLabels.map((label, i) => {
+      const done = i < s.proc.step, act = i === s.proc.step;
+      return { label, col: act || done ? '#14181F' : '#6B7584', dot: done ? '#1F9D57' : act ? '#2563EB' : '#D0D7E2', right: done ? 'Done' : act ? Math.round(s.proc.pct * 100) + '%' : '', w: done ? '100%' : act ? Math.round(s.proc.pct * 100) + '%' : '0%' };
+    }) : [];
+    const vs = SCENES[curScene];
+    const statusDot = React.createElement('span', { style: { width: 7, height: 7, borderRadius: '50%', background: s.proc ? '#2563EB' : '#1F9D57', animation: s.proc ? 'vsPulse 1s ease-in-out infinite' : 'none', flex: 'none' } });
+    const scanBar = React.createElement('div', { style: { position: 'relative', height: 2, borderRadius: 2, background: '#E4E9F0', overflow: 'hidden' } },
+      React.createElement('div', { style: { position: 'absolute', top: 0, bottom: 0, width: '40%', background: '#2563EB', animation: 'vsScan 1.1s cubic-bezier(.4,0,.2,1) infinite' } }));
+    const hasRange = s.inT != null && s.outT != null;
+    const suggestions = ['Jonah demos the app on his phone', 'the pricing whiteboard', 'someone brings up the paywall', 'the dog walks through', 'the drop-off chart'].map(label => ({ label, onClick: () => { this.setState({ q: label }); this.runSearch(label); } }));
+    return {
+      isMac: os === 'macOS', isWin: os === 'Windows', isLinux: os === 'Linux', modK: os === 'macOS' ? '⌘K' : 'Ctrl K',
+      fileName: s.fileName, fileMeta: s.fileMeta, statusDot, statusLabel: s.proc ? 'Indexing' : 'On-device',
+      hasSrc: !!s.src, noSrc: !s.src, src: s.src || undefined, videoRef: this.videoRef, onMeta: this.onMeta, onEnded: this.onEnded, onVideoError: this.onVideoError,
+      onDrop: this.onDrop, onDragOver: this.onDragOver, openFile: this.openFile, fileRef: this.fileRef, onFile: this.onFile,
+      vN: 'Scene ' + pad(vs.i + 1), vD: vs.d, vBg: grad(vs.h),
+      play: this.play, playing: s.playing, paused: !s.playing, tNow: fmtD(s.t), tDur: fmt(dur),
+      back10: () => this.seek(s.t - 10), fwd10: () => this.seek(s.t + 10), backFrame: () => this.seek(s.t - 1 / 30), fwdFrame: () => this.seek(s.t + 1 / 30),
+      frameStrip: this.props.frameStrip ?? true, trackRef: this.trackRef, onTrackDown: this.onTrackDown,
+      ruler, scenes, segsAll: SEGS.map(segV), playL: pct(s.t),
+      hasRange, noRange: !hasRange, rL: hasRange ? pct(s.inT) : '0%', rW: hasRange ? pct(s.outT - s.inT) : '0%',
+      inStr: hasRange ? fmtD(s.inT) : '', outStr: hasRange ? fmtD(s.outT) : '', lenStr: hasRange ? (s.outT - s.inT).toFixed(1) + ' s' : '',
+      clearRange: () => this.setState({ inT: null, outT: null }),
+      hasBusy: !!s.busy, idle: !s.busy, busyLabel: s.busy ? ({ Video: 'Recording video clip', Audio: 'Recording audio' }[s.busy.kind]) + ' · ' + Math.round(s.busy.pct * 100) + '%' : '', busyW: s.busy ? Math.round(s.busy.pct * 100) + '%' : '0%',
+      clipVideo: () => this.exportRange('Video'), clipAudio: () => this.exportRange('Audio'), saveFrame: this.saveFrame,
+      tabs: tabDefs.map(([id, label]) => ({ label, bg: id === tab ? '#FFFFFF' : 'transparent', col: id === tab ? '#14181F' : '#4A5464', sh: id === tab ? '0 1px 2px rgba(20,24,31,.08), 0 0 0 1px #E4E9F0' : 'none', onClick: () => this.setState({ tab: id }) })),
+      tabFind: tab === 'find', tabTranscript: tab === 'transcript', tabShow: tab === 'show', tabClips: tab === 'clips',
+      hasProc: !!s.proc, procSteps,
+      qRef: this.qRef, q: s.q, onQ: e => this.setState({ q: e.target.value }), onQKey: e => { if (e.key === 'Enter') this.runSearch(); }, doSearch: () => this.runSearch(),
+      showSuggest: !s.searching && !s.results, suggestions, searching: s.searching, scanBar,
+      results, hasResults: !!(s.results && s.results.length), noResults: !!(s.results && !s.results.length), lastQ: s.lastQ,
+      resultHead: results.length + (results.length === 1 ? ' moment' : ' moments') + ' found',
+      segInfo: SEGS.length + ' segments · 3 speakers', exportTxt: () => this.exportText(false), exportSrt: () => this.exportText(true),
+      noClips: !s.clips.length,
+      clips: s.clips.map(c => ({
+        isVideo: c.kind === 'Video', isAudio: c.kind === 'Audio', isFrame: c.kind === 'Frame',
+        title: c.kind + ' · ' + (c.b != null ? fmt(c.a) + ' – ' + fmt(c.b) : fmt(c.a)),
+        meta: [c.b != null ? (c.b - c.a).toFixed(1) + ' s' : null, fmtSize(c.size), c.url ? c.ext : 'sample, not exported'].filter(Boolean).join(' · '),
+        hasUrl: !!c.url, onDownload: () => this.download(c.url, c.name), onSeek: () => { this.seek(c.a); if (c.b != null) this.setState({ inT: c.a, outT: c.b }); },
+        onRemove: () => this.setState(st => ({ clips: st.clips.filter(x => x.id !== c.id) })),
+      })),
+      hasToast: !!s.toast, toast: s.toast,
+      openDl: this.openDl, closeDl: this.closeDl, stop: e => e.stopPropagation(), dlOpen: s.dlOpen, dlRef: this.dlRef, dlUrl: s.dlUrl,
+      onDlUrl: e => this.setState({ dlUrl: e.target.value, dlErr: '' }), onDlKey: e => { if (e.key === 'Enter') this.fetchInfo(); }, fetchInfo: this.fetchInfo,
+      dlIdle: s.dlPhase === 'idle' && !s.dlErr, dlHasErr: !!s.dlErr, dlErr: s.dlErr, dlFetching: s.dlPhase === 'fetching',
+      dlHasInfo: !!s.dlInfo && ['info', 'downloading', 'done'].includes(s.dlPhase), dlIsInfo: s.dlPhase === 'info', dlIsDownloading: s.dlPhase === 'downloading', dlIsDone: s.dlPhase === 'done',
+      dlTitle: s.dlInfo ? s.dlInfo.title : '', dlMeta: s.dlInfo ? s.dlInfo.host + (s.dlInfo.direct ? ' · direct file' : ' · ' + fmt(s.dlInfo.secs)) : '',
+      dlDur: s.dlInfo ? (s.dlInfo.secs ? fmt(s.dlInfo.secs) : 'File') : '', dlThumbBg: s.dlInfo ? grad(s.dlInfo.hue) : 'transparent',
+      dlShowOpts: !!s.dlInfo && !s.dlInfo.direct, dlDirect: !!s.dlInfo && s.dlInfo.direct,
+      dlQs: ['Best', '1080p', '720p', 'Audio only'].map(q => ({ label: q, sub: s.dlInfo && s.dlInfo.secs ? fmtSize(this.sizeFor(q, s.dlInfo.secs)) : '', bg: q === s.dlQ ? '#EAF1FF' : '#FFFFFF', col: q === s.dlQ ? '#1D4FD8' : '#2A3240', bd: q === s.dlQ ? '#9DBBF7' : '#DCE3EC', onClick: () => this.setState(st => ({ dlQ: q, dlF: q === 'Audio only' ? (['M4A', 'MP3'].includes(st.dlF) ? st.dlF : 'M4A') : (['MP4', 'WebM'].includes(st.dlF) ? st.dlF : 'MP4') })) })),
+      dlFs: (s.dlQ === 'Audio only' ? ['M4A', 'MP3'] : ['MP4', 'WebM']).map(f => ({ label: f, bg: f === s.dlF ? '#FFFFFF' : 'transparent', col: f === s.dlF ? '#14181F' : '#4A5464', sh: f === s.dlF ? '0 1px 2px rgba(20,24,31,.08), 0 0 0 1px #E4E9F0' : 'none', onClick: () => this.setState({ dlF: f }) })),
+      dlSaveTo: this.saveDir(), dlOpenAfter: s.dlOpenAfter, toggleOpenAfter: () => this.setState(st => ({ dlOpenAfter: !st.dlOpenAfter })),
+      dlChkBg: s.dlOpenAfter ? '#2563EB' : '#FFFFFF', dlChkBd: s.dlOpenAfter ? '#2563EB' : '#C3CCD8',
+      startDl: this.startDl, cancelDl: this.cancelDl,
+      dlPctStr: s.dlTotal ? Math.floor(s.dlGot / s.dlTotal * 100) + '%' : fmtSize(s.dlGot || 1),
+      dlDetail: (s.dlTotal ? fmtSize(s.dlGot || 1) + ' of ' + fmtSize(s.dlTotal) : 'received') + (s.dlSpeed ? ' · ' + fmtSize(s.dlSpeed) + '/s' : '') + (s.dlTotal && s.dlSpeed ? ' · ' + Math.max(0, Math.ceil((s.dlTotal - s.dlGot) / s.dlSpeed)) + ' s left' : ''),
+      dlBarW: s.dlTotal ? (s.dlGot / s.dlTotal * 100).toFixed(1) + '%' : '30%',
+      dlBtnLabel: s.dlPhase === 'downloading' ? 'Downloading ' + (s.dlTotal ? Math.floor(s.dlGot / s.dlTotal * 100) + '%' : '…') : 'Download',
+      openLast: () => s.downloads[0] && this.openDownloaded(s.downloads[0]),
+      dlHasRecent: s.downloads.length > 0, dlRecent: s.downloads.map(d => ({ title: d.name, meta: fmtSize(d.size) + ' · ' + d.host, onOpen: () => this.openDownloaded(d) })),
+    };
+  }
+}
+</script>
+</body>
+</html>
