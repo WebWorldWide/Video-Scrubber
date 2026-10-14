@@ -1,0 +1,76 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Video Scrubber",
+  "version": "0.1.0",
+  "identifier": "com.webworldwide.videoscrubber",
+  "build": {
+    "beforeDevCommand": "npm run vite",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:*",
+        "img-src": "'self' data: blob: asset: http://127.0.0.1:* http://localhost:* https:",
+        "media-src": "'self' blob: http://127.0.0.1:* http://localhost:*",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "script-src": "'self'"
+      },
+      "devCsp": {
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* ws://localhost:5173",
+        "img-src": "'self' data: blob: asset: http://127.0.0.1:* http://localhost:* https:",
+        "media-src": "'self' blob: http://127.0.0.1:* http://localhost:*",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "script-src": "'self' 'unsafe-inline'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Video",
+    "shortDescription": "Describe a moment and find it",
+    "longDescription": "Local AI transcription, key frames and moment search across your videos. Nothing leaves your machine.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../engine/pyproject.toml": "engine/pyproject.toml",
+      "../engine/vscrubber/*.py": "engine/vscrubber/"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "mp4",
+          "mov",
+          "m4v",
+          "mkv",
+          "webm",
+          "avi"
+        ],
+        "name": "Video",
+        "role": "Viewer"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "depends": [
+          "ffmpeg",
+          "gstreamer1.0-libav",
+          "gstreamer1.0-plugins-good"
+        ]
+      }
+    }
+  }
+}

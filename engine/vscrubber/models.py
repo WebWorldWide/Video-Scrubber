@@ -411,8 +411,9 @@ class Vision:
     def relevance(self, sims: np.ndarray) -> np.ndarray:
         """Map cosine similarity to a 0–1 relevance the search can compare with text scores."""
         if self.sigmoid:
+            # Matching frames land around -3…+6, unrelated ones below -8.
             logits = sims * self.scale + self.bias
-            return np.clip((logits + 9.0) / 9.0, 0, 1)
+            return np.clip((logits + 10.0) / 10.0, 0, 1)
         lo, hi = self.meta["calib"]
         return np.clip((sims - lo) / (hi - lo), 0, 1)
 

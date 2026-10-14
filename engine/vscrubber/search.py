@@ -11,7 +11,7 @@ import re
 
 import numpy as np
 
-from . import catalog, models, settings
+from . import models
 
 STOP = set(("a an the of to in on at and or is are was were be been it its this that these when where what which who "
             "whom does do did part moment someone somebody they them their there show shows showing shown find me i we "
@@ -112,7 +112,8 @@ def search_video(data: dict, qc: QueryCache) -> list[dict]:
                     vis = 0.7 * vis + 0.3 * np.clip((z - 1.0) / 2.5, 0, 1)
             except Exception:
                 pass
-        text_side = np.maximum(sem, kw)
+        # Generated descriptions are less reliable than what was actually said.
+        text_side = np.maximum(sem, kw) * 0.85
         score = np.maximum(vis, text_side) + 0.25 * np.minimum(vis, text_side)
         for i in np.argsort(-score)[:40]:
             if score[i] >= MIN_SCORE * 0.8:
@@ -134,7 +135,7 @@ def search_video(data: dict, qc: QueryCache) -> list[dict]:
                 near.setdefault("scene", c.get("scene"))
             continue
         out.append(dict(c))
-    out = [o for o in out if o["score"] >= MIN_SCORE]
+    out = [o | {"score": min(1.0, o["score"])} for o in out if o["score"] >= MIN_SCORE]
     return [_present(o, data) for o in out]
 
 
@@ -162,7 +163,8 @@ def _present(o: dict, data: dict) -> dict:
         title = scene.get("d") or f"Key frame {si + 1:02d}"
         snip = f"“{seg['x']}”" if seg else f"Key frame {si + 1:02d}"
     return {"videoId": data["video"]["id"], "videoName": data["video"]["name"], "t": o["t"], "e": o["e"],
-            "kind": o["kind"], "title": title, "snip": snip, "scene": si, "score": round(o["score"], 4),
+            "kind": o["kind"], "title": title, "snip": snip, "scene": si, "frame": scene["f"] if scene else None,
+            "score": round(o["score"], 4),
             "conf": int(max(1, min(99, round(o["score"] * 100))))}
 
 
