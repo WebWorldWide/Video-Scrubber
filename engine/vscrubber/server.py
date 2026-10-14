@@ -26,11 +26,25 @@ async def lifespan(app):
     global lib
     bus.attach(asyncio.get_running_loop())
     lib = Library()
-    # Probe hardware off the request path so the first /hardware call is instant.
+    # Probe hardware and warm the search models off the request path, so the first search is quick.
     asyncio.get_running_loop().run_in_executor(None, hardware.summary)
+    asyncio.get_running_loop().run_in_executor(None, _warm)
     # The desktop shell waits for this line to learn the port.
     print(f"VSCRUBBER_READY port={os.environ.get('VS_PORT', '')}", flush=True)
     yield
+
+
+def _warm():
+    if not any(v["status"] == "ready" for v in lib.videos.values()):
+        return
+    s = settings.load()
+    for kind in ("text", "vision"):
+        if models.is_installed(kind, s[kind]):
+            try:
+                with models.lock(kind):
+                    models.get(kind, s[kind])
+            except Exception:
+                pass
 
 
 app = FastAPI(lifespan=lifespan)

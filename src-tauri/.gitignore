@@ -1,2 +1,4 @@
 target/
 gen/schemas/
+bin/uv
+bin/uv.exe

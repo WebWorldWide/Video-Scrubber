@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "description": "Describe a moment and find it. Local AI transcription, key frames and search across your videos.",
   "author": "Adam Nolle",
-  "license": "MIT",
   "scripts": {
     "vite": "vite",
     "dev": "tauri dev",

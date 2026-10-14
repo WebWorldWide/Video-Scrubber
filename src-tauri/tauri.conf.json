@@ -47,7 +47,8 @@
     ],
     "resources": {
       "../engine/pyproject.toml": "engine/pyproject.toml",
-      "../engine/vscrubber/*.py": "engine/vscrubber/"
+      "../engine/vscrubber/*.py": "engine/vscrubber/",
+      "bin/*": "bin/"
     },
     "fileAssociations": [
       {
