@@ -1,0 +1,139 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.24000,0.49000,1.00000,1.00000",
+          "display-p3:0.08000,0.22000,0.80000,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0.0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1.0
+          }
+        }
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.13000,0.30000,0.78000,1.00000",
+          "display-p3:0.04000,0.10000,0.42000,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0.0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1.0
+          }
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Bubbles",
+      "layers": [
+        {
+          "name": "bubbles",
+          "image-name": "bubbles.svg",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.25
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.35
+      },
+      "specular": true,
+      "lighting": "individual"
+    },
+    {
+      "name": "Suds",
+      "layers": [
+        {
+          "name": "foam",
+          "image-name": "foam.svg",
+          "glass": false
+        },
+        {
+          "name": "streaks",
+          "image-name": "streaks.svg",
+          "glass": false,
+          "opacity": 0.9
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.35
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "specular": true
+    },
+    {
+      "name": "Sponge",
+      "layers": [
+        {
+          "name": "sponge",
+          "image-name": "sponge.svg",
+          "glass": false
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.6
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "specular": true
+    },
+    {
+      "name": "Timeline",
+      "layers": [
+        {
+          "name": "ticks",
+          "image-name": "timeline-ticks.svg",
+          "glass": false,
+          "opacity": 0.85
+        },
+        {
+          "name": "glass",
+          "image-name": "timeline-glass.svg",
+          "glass": true
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.45
+      },
+      "specular": true,
+      "blur-material": 0.25
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}

@@ -75,6 +75,12 @@
     },
     "license": "GPL-3.0-or-later",
     "licenseFile": "../LICENSE",
-    "copyright": "Copyright \u00a9 2026 Adam Nolle. Licensed under the GNU GPL v3 or later."
+    "copyright": "Copyright \u00a9 2026 Adam Nolle. Licensed under the GNU GPL v3 or later.",
+    "macOS": {
+      "files": {
+        "Resources/Assets.car": "icons/macos/Assets.car"
+      },
+      "minimumSystemVersion": "11.0"
+    }
   }
 }
