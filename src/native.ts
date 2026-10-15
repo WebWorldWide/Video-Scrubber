@@ -11,7 +11,10 @@ import type { EngineState } from './api';
 
 export const inTauri = '__TAURI_INTERNALS__' in window;
 
-const MEDIA_EXT = ['mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'flv', 'mts', 'm2ts', 'ts', 'mpg', 'mpeg', 'ogv', '3gp', 'mp3', 'm4a', 'wav', 'flac', 'ogg', 'opus', 'aac'];
+const MEDIA_EXT = [
+  'mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'asf', 'flv', 'f4v', 'mts', 'm2ts', 'ts', 'mpg', 'mpeg', 'vob', 'mxf', 'ogv', '3gp', '3g2', 'divx', 'rm', 'rmvb',
+  'mp3', 'm4a', 'm4b', 'aac', 'wav', 'wave', 'flac', 'alac', 'ogg', 'oga', 'opus', 'spx', 'weba', 'aif', 'aiff', 'aifc', 'caf', 'wma', 'amr', 'awb', 'ac3', 'eac3', 'dts', 'mka', 'mp2', 'mpga', 'au', 'snd', 'wv', 'ape', 'tta', 'dsf', 'dff', 'gsm',
+];
 
 type Unlisten = () => void;
 
@@ -40,7 +43,7 @@ export const native = {
 
   async openFiles(): Promise<string[]> {
     if (!inTauri) return [];
-    const r = await open({ multiple: true, title: 'Open videos', filters: [{ name: 'Video and audio', extensions: MEDIA_EXT }] });
+    const r = await open({ multiple: true, title: 'Open', filters: [{ name: 'Media', extensions: MEDIA_EXT }] });
     return r ? (Array.isArray(r) ? r : [r]) : [];
   },
   async pickFolder(current: string): Promise<string | null> {

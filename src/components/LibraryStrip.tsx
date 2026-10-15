@@ -21,7 +21,7 @@ export function LibraryStrip({ videos, activeId, firstFrame, onPick, onRemove, o
         const overall = Math.round(((Math.min(3, v.step) + (v.status === 'ready' ? 0 : v.pct)) / 3) * 100);
         return (
           <div key={v.id} className={'vid-tab' + (v.id === activeId ? ' on' : '')} onClick={() => onPick(v.id)} title={v.path}>
-            <div style={{ width: 40, height: 24, borderRadius: 4, flex: 'none', background: f ? `center / cover no-repeat url("${f}")` : grad(hueOf(v.name)), position: 'relative', overflow: 'hidden' }}>
+            <div style={{ width: 40, height: 24, borderRadius: 0, flex: 'none', background: f ? `center / cover no-repeat url("${f}")` : grad(hueOf(v.name)), position: 'relative', overflow: 'hidden' }}>
               {busy && <div style={{ position: 'absolute', left: 0, bottom: 0, height: 2, width: overall + '%', background: '#2563EB' }} />}
             </div>
             <span style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{v.name}</span>
@@ -36,7 +36,7 @@ export function LibraryStrip({ videos, activeId, firstFrame, onPick, onRemove, o
           </div>
         );
       })}
-      <button className="btn" style={{ height: 34, flex: 'none' }} onClick={onAdd}><IconPlus />Add videos</button>
+      <button className="btn" style={{ height: 34, flex: 'none' }} onClick={onAdd}><IconPlus />Add</button>
     </div>
   );
 }

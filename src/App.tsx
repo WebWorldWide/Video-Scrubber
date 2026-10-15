@@ -140,8 +140,8 @@ export function App() {
       case 'proxy':
         if (e.done) {
           setProxied(p => ({ ...p, [e.id]: true }));
-          say('Ready to play');
-        } else if (e.error) say('Couldn’t convert this video: ' + e.error);
+          say('Converted');
+        } else if (e.error) say('Conversion failed: ' + e.error);
         break;
       case 'clip':
         setBusy(b => (b ? { ...b, pct: e.pct } : b));
@@ -179,7 +179,7 @@ export function App() {
         setActiveId(a => a ?? lib[lib.length - 1]?.id ?? null);
         setReady(true);
       })
-      .catch(err => say('Couldn’t reach the local engine: ' + err.message));
+      .catch(err => say('Engine unreachable: ' + err.message));
     api.hardware().then(h => alive && setHw(h)).catch(() => {});
     const unsub = subscribe(e => onEvent.current(e));
     return () => {
@@ -196,8 +196,8 @@ export function App() {
       const r = await api.add(paths);
       setVideos(vs => r.added.reduce(upsert, vs));
       if (r.added.length) setActiveId(r.added[0].id);
-      if (r.errors.length) say(r.errors.length === 1 ? r.errors[0].error : `${r.errors.length} files couldn’t be opened`);
-      else if (r.added.length > 1) say(`Indexing ${r.added.length} videos on this device…`);
+      if (r.errors.length) say(r.errors.length === 1 ? r.errors[0].error : `${r.errors.length} files failed to open`);
+      else if (r.added.length > 1) say(`Indexing ${r.added.length} files`);
     } catch (err) {
       say((err as Error).message);
     }
@@ -214,7 +214,7 @@ export function App() {
 
   const openFile = async () => {
     if (native.available) addPaths(await native.openFiles());
-    else say('Opening files needs the desktop app');
+    else say('Desktop app only');
   };
 
   const removeVideo = async (v: Video) => {
@@ -225,7 +225,7 @@ export function App() {
       return rest;
     });
     setResults(r => r && r.filter(x => x.videoId !== v.id));
-    say(`Removed ${v.name} from the library. The file wasn’t touched.`);
+    say(`Removed ${v.name}`);
   };
 
   // Switching videos resets playback; a pending seek (from a search result) is applied on load.
@@ -296,11 +296,11 @@ export function App() {
   const onVideoError = () => {
     if (!active) return;
     if (useProxy) {
-      say('This video can’t be played, even after converting it.');
+      say('Can’t play this file');
       return;
     }
     api.proxy(active.id).catch(() => {});
-    say('This format can’t play here directly. Converting a copy for playback…');
+    say('Converting for playback…');
   };
 
   const setIn = () => {
@@ -347,12 +347,12 @@ export function App() {
       return;
     }
     if (!videos.length) {
-      say('Open a video first');
+      say('Open a file first');
       return;
     }
     const all = scope === 'all' && videos.length > 1;
     if (!all && active && isBusy(active)) {
-      say('Still indexing — search will be ready in a moment');
+      say('Still indexing');
       return;
     }
     setQ(query);
@@ -393,7 +393,7 @@ export function App() {
   const exportRange = async (kind: 'Video' | 'Audio') => {
     if (busy || !active) return;
     if (inT == null || outT == null || outT - inT < 0.2) {
-      say('Select a range first: drag across the timeline, or press I and O.');
+      say('Select a range first (drag, or I / O)');
       return;
     }
     videoRef.current?.pause();
@@ -401,7 +401,7 @@ export function App() {
     try {
       const r = await api.clip(active.id, kind === 'Video' ? 'video' : 'audio', inT, outT);
       addClip({ kind, videoId: active.id, videoName: active.name, a: inT, b: outT, path: r.path, name: r.name, size: r.size });
-      say(`${kind} clip saved to ${settings?.saveDir ?? 'your videos folder'}/Clips`);
+      say(`Saved to ${settings?.saveDir ?? 'Movies'}/Clips`);
     } catch (err) {
       say((err as Error).message);
     } finally {
@@ -428,7 +428,7 @@ export function App() {
 
   const jumpToClip = (c: Clip) => {
     if (c.videoId !== activeId) {
-      if (!videos.some(v => v.id === c.videoId)) return say('That video is no longer in the library');
+      if (!videos.some(v => v.id === c.videoId)) return say('File no longer in library');
       pendingSeek.current = { t: c.a, inT: c.b != null ? c.a : undefined, outT: c.b ?? undefined };
       setActiveId(c.videoId);
     } else {
@@ -449,7 +449,7 @@ export function App() {
       const u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
       if (!u.hostname.includes('.')) throw new Error();
     } catch {
-      return setDl({ phase: 'idle', info: null, err: 'That doesn’t look like a link. Paste a full URL.' });
+      return setDl({ phase: 'idle', info: null, err: 'Not a valid URL' });
     }
     setDl({ phase: 'fetching', err: '', info: null });
     try {
@@ -480,7 +480,7 @@ export function App() {
   const openDownloaded = (items: DlItem[]) => {
     addPaths(items.map(i => i.path));
     setDl({ open: false, phase: 'idle', info: null, url: '' });
-    say(items.length > 1 ? `Downloaded ${items.length} videos. Indexing on this device…` : 'Downloaded. Indexing on this device…');
+    say(items.length > 1 ? `Downloaded ${items.length}` : 'Downloaded');
   };
 
   // ---------------------------------------------------------------- keyboard
@@ -538,9 +538,9 @@ export function App() {
 
   const indexingCount = videos.filter(isBusy).length;
   const engineUp = engine?.state === 'ready' && ready;
-  const statusLabel = !engine || engine.state === 'starting' ? 'Starting' : engine.state === 'installing' ? 'Setting up' : engine.state === 'error' ? 'Engine stopped' : indexingCount ? (indexingCount > 1 ? `Indexing ${indexingCount}` : 'Indexing') : 'On-device';
+  const statusLabel = !engine || engine.state === 'starting' ? 'Starting' : engine.state === 'installing' ? 'Setting up' : engine.state === 'error' ? 'Engine stopped' : indexingCount ? (indexingCount > 1 ? `Indexing ${indexingCount}` : 'Indexing') : 'Ready';
   const pulsing = !engineUp || indexingCount > 0;
-  const modelLine = settings ? [settings.speech, settings.caption !== 'none' ? settings.caption.replace(/^ollama:/, '') : settings.vision].join(' · ') : 'local models';
+  const modelLine = settings ? [settings.speech, settings.caption !== 'none' ? settings.caption : settings.vision].map(id => id.replace(/^(ollama:|hf:([^/]+\/)?)/, '')).join(' · ') : 'local models';
   const hasRange = inT != null && outT != null;
   const others = videos.filter(v => v.id !== activeId && isBusy(v)).length;
   const firstFrame = (v: Video) => {
@@ -557,16 +557,16 @@ export function App() {
       <TitleBar os={os} />
 
       <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 24px', borderBottom: '1px solid #E4E9F0', background: '#FFFFFF', flexWrap: 'wrap' }}>
-        <button className="btn" onClick={openFile} style={{ gap: 8 }}><IconFolder />Open video</button>
+        <button className="btn" onClick={openFile} style={{ gap: 8 }}><IconFolder />Open</button>
         <button className="btn-tint" onClick={() => setDl({ open: true })}>
           <IconDownload />
           {dl.phase === 'downloading' ? 'Downloading ' + (dl.total ? Math.floor((dl.got / dl.total) * 100) + '%' : '…') : 'Download'}
         </button>
         <div style={{ minWidth: 0, flex: '1 1 220px', display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{active ? active.name : 'No video open'}</span>
+          <span style={{ fontSize: 13.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{active ? active.name : 'No file'}</span>
           <span className="eyebrow tnum" style={{ whiteSpace: 'nowrap' }}>{fileMeta}</span>
         </div>
-        <button className="status-pill" onClick={() => engineUp && setModelsOpen(true)} title="Local models and hardware">
+        <button className="status-pill" onClick={() => engineUp && setModelsOpen(true)} title="Models">
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: engine?.state === 'error' ? '#B42318' : pulsing ? '#2563EB' : '#1F9D57', animation: pulsing && engine?.state !== 'error' ? 'vsPulse 1s ease-in-out infinite' : 'none', flex: 'none' }} />
           <span style={{ fontSize: 12, fontWeight: 500 }}>{statusLabel}</span>
           <span className="eyebrow" style={{ whiteSpace: 'nowrap' }}>{modelLine}</span>
@@ -603,7 +603,7 @@ export function App() {
             {busy ? (
               <div style={{ flex: '1 1 240px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span className="tnum" style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap' }}>{busy.kind === 'Video' ? 'Exporting video clip' : 'Extracting audio'} · {Math.round(busy.pct * 100)}%</span>
-                <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#E4E9F0', overflow: 'hidden' }}><div style={{ height: '100%', width: Math.round(busy.pct * 100) + '%', background: '#2563EB' }} /></div>
+                <div style={{ flex: 1, height: 3, borderRadius: 0, background: '#E4E9F0', overflow: 'hidden' }}><div style={{ height: '100%', width: Math.round(busy.pct * 100) + '%', background: '#2563EB' }} /></div>
               </div>
             ) : (
               <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -616,7 +616,7 @@ export function App() {
                   </>
                 ) : (
                   <>
-                    <span style={{ fontSize: 12, color: '#6B7584' }}>Drag across the timeline to select, or set in and out with</span>
+                    <span style={{ fontSize: 12, color: '#6B7584' }}>Select</span>
                     <span className="kbd">I</span><span className="kbd">O</span>
                   </>
                 )}
@@ -632,9 +632,9 @@ export function App() {
 
         <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid #E4E9F0', background: '#FAFBFD' }}>
           <div style={{ flex: 'none', padding: '20px 20px 0' }}>
-            <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 10, background: '#EEF2F7', border: '1px solid #E4E9F0' }}>
+            <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 0, background: '#EEF2F7', border: '1px solid #E4E9F0' }}>
               {TABS.map(([id, label]) => (
-                <button key={id} onClick={() => setTab(id)} style={{ flex: '1 1 auto', height: 28, padding: '0 10px', border: 'none', borderRadius: 6, background: id === tab ? '#FFFFFF' : 'transparent', color: id === tab ? '#14181F' : '#4A5464', boxShadow: id === tab ? '0 1px 2px rgba(20,24,31,.08), 0 0 0 1px #E4E9F0' : 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                <button key={id} onClick={() => setTab(id)} style={{ flex: '1 1 auto', height: 28, padding: '0 10px', border: 'none', borderRadius: 0, background: id === tab ? '#FFFFFF' : 'transparent', color: id === tab ? '#14181F' : '#4A5464', boxShadow: id === tab ? '0 1px 2px rgba(20,24,31,.08), 0 0 0 1px #E4E9F0' : 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap' }}>
                   {label}{id === 'clips' && clips.length ? ' · ' + clips.length : ''}
                 </button>
               ))}
@@ -643,14 +643,14 @@ export function App() {
 
           {active && isBusy(active) && <ProcCard video={active} others={others} />}
           {active && active.status === 'error' && (
-            <div style={{ flex: 'none', margin: '14px 20px 0', padding: 14, borderRadius: 12, background: '#FFFFFF', border: '1px solid #F3C8C3', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ flex: 'none', margin: '14px 20px 0', padding: 14, borderRadius: 0, background: '#FFFFFF', border: '1px solid #F3C8C3', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span className="eyebrow" style={{ color: '#B42318' }}>Indexing stopped</span>
               <span style={{ fontSize: 12.5, color: '#2A3240', lineHeight: 1.5, overflowWrap: 'anywhere' }}>{active.error}</span>
               <button className="plain-btn" style={{ alignSelf: 'flex-start' }} onClick={() => api.reindex(active.id)}>Try again</button>
             </div>
           )}
           {active && active.status === 'ready' && active.warnings.length > 0 && (
-            <div style={{ flex: 'none', margin: '14px 20px 0', padding: '10px 14px', borderRadius: 12, background: '#FFF8EB', border: '1px solid #F5DDB0', fontSize: 12, color: '#6B4A0F', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+            <div style={{ flex: 'none', margin: '14px 20px 0', padding: '10px 14px', borderRadius: 0, background: '#FFF8EB', border: '1px solid #F5DDB0', fontSize: 12, color: '#6B4A0F', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
               {active.warnings.map(w => <div key={w}>{w.split('\n')[0]}</div>)}
             </div>
           )}
@@ -677,12 +677,12 @@ export function App() {
       )}
       {modelsOpen && settings && (
         <ModelsDialog hw={hw} settings={settings} pulls={pulls} videoCount={videos.length} onSettings={setSettings}
-          onReindexAll={() => { api.reindexAll(); say('Re-indexing every video with the new models'); }} onClose={() => setModelsOpen(false)} />
+          onReindexAll={() => { api.reindexAll(); say('Re-indexing'); }} onClose={() => setModelsOpen(false)} />
       )}
       {engine && <EngineGate engine={engine} />}
 
       {toast && (
-        <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', maxWidth: 'min(520px, calc(100vw - 32px))', padding: '10px 16px', borderRadius: 8, background: '#14181F', border: '1px solid #14181F', boxShadow: '0 12px 32px rgba(20,24,31,.18)', fontSize: 12.5, color: '#FFFFFF', zIndex: 30, textWrap: 'pretty', overflowWrap: 'anywhere' } as React.CSSProperties}>{toast}</div>
+        <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', maxWidth: 'min(520px, calc(100vw - 32px))', padding: '10px 16px', borderRadius: 0, background: '#14181F', border: '1px solid #14181F', boxShadow: '0 12px 32px rgba(20,24,31,.18)', fontSize: 12.5, color: '#FFFFFF', zIndex: 30, textWrap: 'pretty', overflowWrap: 'anywhere' } as React.CSSProperties}>{toast}</div>
       )}
     </div>
   );

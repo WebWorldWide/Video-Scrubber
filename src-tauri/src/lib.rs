@@ -9,7 +9,8 @@ use engine::{Engine, EngineState};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder};
 
 const MEDIA_EXT: &[&str] = &[
-    "mp4", "mov", "m4v", "mkv", "webm", "avi", "wmv", "flv", "mts", "m2ts", "ts", "mpg", "mpeg", "ogv", "3gp", "mp3", "m4a", "wav", "flac", "ogg", "opus", "aac",
+    "mp4", "mov", "m4v", "mkv", "webm", "avi", "wmv", "asf", "flv", "f4v", "mts", "m2ts", "ts", "mpg", "mpeg", "vob", "mxf", "ogv", "3gp", "3g2", "divx", "rm", "rmvb",
+    "mp3", "m4a", "m4b", "aac", "wav", "wave", "flac", "alac", "ogg", "oga", "opus", "spx", "weba", "aif", "aiff", "aifc", "caf", "wma", "amr", "awb", "ac3", "eac3", "dts", "mka", "mp2", "mpga", "au", "snd", "wv", "ape", "tta", "dsf", "dff", "gsm",
 ];
 
 /// Files handed to the app (CLI args, "Open with", a second launch) before the page is listening.

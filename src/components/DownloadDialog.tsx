@@ -53,26 +53,23 @@ export function DownloadDialog({ s, saveDir, set, onClose, onFetch, onStart, onC
     (s.speed ? ' · ' + fmtSize(s.speed) + '/s' : '') +
     (s.total && s.speed ? ' · ' + Math.max(0, Math.ceil((s.total - s.got) / s.speed)) + ' s left' : '');
   const formats = s.q === 'Audio only' ? ['M4A', 'MP3'] : ['MP4', 'WebM'];
-  const meta = info ? [info.host, info.playlist ? `Playlist · ${info.count} videos` : info.direct ? 'direct file' : null, info.duration ? fmt(info.duration) : null].filter(Boolean).join(' · ') : '';
+  const meta = info ? [info.host, info.playlist ? `Playlist · ${info.count}` : null, info.duration ? fmt(info.duration) : null].filter(Boolean).join(' · ') : '';
 
   return (
-    <Dialog title={<>Download a <i>video</i></>} sub="Paste a link. The file downloads on this machine, then opens here to be transcribed and indexed." onClose={onClose}>
+    <Dialog title={<>Download</>} onClose={onClose}>
       <div style={{ display: 'flex', gap: 8 }}>
         <input ref={ref} className="url-input" value={s.url} onChange={e => set({ url: e.target.value, err: '' })} onKeyDown={e => e.key === 'Enter' && onFetch()} placeholder="https://…" spellCheck={false} />
-        <button className="dark-btn" onClick={onFetch}>Get video</button>
+        <button className="dark-btn" onClick={onFetch}>Get</button>
       </div>
-      {s.phase === 'idle' && !s.err && (
-        <span style={{ fontSize: 12.5, color: '#6B7584', lineHeight: 1.5, marginTop: -10 }}>Works with direct files (.mp4, .webm, .mov), links from most video sites, and whole playlists.</span>
-      )}
       {s.err && <span style={{ fontSize: 12.5, color: '#B42318', lineHeight: 1.5, marginTop: -10, overflowWrap: 'anywhere' }}>{s.err}</span>}
       {s.phase === 'fetching' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}><ScanBar /><span style={{ fontSize: 12.5, color: '#4A5464' }}>Reading the link…</span></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}><ScanBar /><span style={{ fontSize: 12.5, color: '#4A5464' }}>Loading…</span></div>
       )}
       {info && ['info', 'downloading', 'done'].includes(s.phase) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '136px minmax(0,1fr)', gap: 16, alignItems: 'center' }}>
-            <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 10, background: info.thumbnail ? `center / cover no-repeat url("${info.thumbnail}"), ${grad(hueOf(info.url))}` : grad(hueOf(info.url)), overflow: 'hidden' }}>
-              <span className="tnum" style={{ position: 'absolute', right: 6, bottom: 6, padding: '2px 6px', borderRadius: 999, background: 'rgba(255,255,255,.9)', fontSize: 10.5, fontWeight: 600, color: '#2A3240' }}>
+            <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 0, background: info.thumbnail ? `center / cover no-repeat url("${info.thumbnail}"), ${grad(hueOf(info.url))}` : grad(hueOf(info.url)), overflow: 'hidden' }}>
+              <span className="tnum" style={{ position: 'absolute', right: 6, bottom: 6, padding: '2px 6px', borderRadius: 0, background: 'rgba(255,255,255,.9)', fontSize: 10.5, fontWeight: 600, color: '#2A3240' }}>
                 {info.playlist ? `${info.count} videos` : info.duration ? fmt(info.duration) : 'File'}
               </span>
             </div>
@@ -106,17 +103,16 @@ export function DownloadDialog({ s, saveDir, set, onClose, onFetch, onStart, onC
                   </div>
                 </>
               )}
-              {info.direct && <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5 }}>Direct file link. It downloads as-is, in its original quality and format.</span>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 12, background: '#F5F7FA' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 0, background: '#F5F7FA' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
                   <span className="eyebrow" style={{ flex: 'none' }}>Save to</span>
                   <span style={{ fontSize: 12.5, color: '#2A3240', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{saveDir}</span>
                 </div>
                 <button onClick={() => set({ openAfter: !s.openAfter })} style={{ display: 'flex', alignItems: 'center', gap: 10, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', textAlign: 'left', fontSize: 13, color: '#14181F' }}>
-                  <span style={{ width: 18, height: 18, flex: 'none', borderRadius: 5, border: `1.5px solid ${s.openAfter ? '#2563EB' : '#C3CCD8'}`, background: s.openAfter ? '#2563EB' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF' }}>
+                  <span style={{ width: 18, height: 18, flex: 'none', borderRadius: 0, border: `1.5px solid ${s.openAfter ? '#2563EB' : '#C3CCD8'}`, background: s.openAfter ? '#2563EB' : '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF' }}>
                     {s.openAfter && <IconCheck />}
                   </span>
-                  Open, transcribe and index when done
+                  Open when done
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -133,10 +129,9 @@ export function DownloadDialog({ s, saveDir, set, onClose, onFetch, onStart, onC
                 <span className="tnum" style={{ fontSize: 12.5, color: '#4A5464' }}>{detail}</span>
                 <button className="plain-btn" style={{ marginLeft: 'auto' }} onClick={onCancel}>Cancel</button>
               </div>
-              <div style={{ height: 6, borderRadius: 999, background: '#EEF2F7', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: s.total ? ((s.got / s.total) * 100).toFixed(1) + '%' : '30%', borderRadius: 999, background: '#2563EB' }} />
+              <div style={{ height: 6, borderRadius: 0, background: '#EEF2F7', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: s.total ? ((s.got / s.total) * 100).toFixed(1) + '%' : '30%', borderRadius: 0, background: '#2563EB' }} />
               </div>
-              <span style={{ fontSize: 11.5, color: '#6B7584' }}>You can close this window. The download keeps going.</span>
             </div>
           )}
 
@@ -145,14 +140,14 @@ export function DownloadDialog({ s, saveDir, set, onClose, onFetch, onStart, onC
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 500, color: '#1F7A47', minWidth: 0 }}>
                 <IconCheck size={16} w={2.2} />Saved to {saveDir}
               </span>
-              <button className="primary" style={{ marginLeft: 'auto', height: 40, boxShadow: 'none' }} onClick={() => onOpen(s.last)}>Open in Scrubber</button>
+              <button className="primary" style={{ marginLeft: 'auto', height: 40, boxShadow: 'none' }} onClick={() => onOpen(s.last)}>Open</button>
             </div>
           )}
         </div>
       )}
       {s.recent.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 18, borderTop: '1px solid #EEF2F7' }}>
-          <span className="eyebrow">Recent downloads</span>
+          <span className="eyebrow">Recent</span>
           {s.recent.map(d => (
             <div key={d.path} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>

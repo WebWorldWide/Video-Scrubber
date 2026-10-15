@@ -108,7 +108,7 @@ def _model_row(kind: str, m: dict, s: dict, tags: list[str] | None, budget: int,
         "engine": engine, "engines": [e for e in catalog.SPEECH_ENGINES if e in m] if kind == "speech" else None,
         "onGpu": catalog.on_gpu(engine) if engine and engine not in ("none", "ollama") else None,
         "memory": mem, "download": models.download_size(kind, m["id"], network=False) if engine not in (None, "ollama") else None,
-        "fits": mem <= budget, "recommended": rec.get(kind) == m["id"],
+        "fits": mem <= budget, "recommended": rec.get(kind) == m["id"], "custom": bool(m.get("custom")),
         "available": engine is not None and not (engine == "ollama" and tags is None),
         "installed": models.is_installed(kind, m["id"], tags or []) if engine else False,
     }
@@ -120,7 +120,7 @@ def get_models():
     s = settings.load()
     mem = hardware.memory()
     rec = catalog.recommend(s["language"])
-    out = {kind: [_model_row(kind, m, s, tags, mem["budget"], rec) for m in items] for kind, items in catalog.KINDS.items()}
+    out = {kind: [_model_row(kind, m, s, tags, mem["budget"], rec) for m in catalog.models(kind)] for kind in catalog.KINDS}
     used = sum(catalog.memory_needed(k, catalog.get(k, s[k]), catalog.engine_for(k, catalog.get(k, s[k]))) for k in catalog.KINDS)
     return {"models": out, "selected": {k: s[k] for k in catalog.KINDS}, "recommended": rec, "ollama": tags is not None,
             "pulls": models.pull_state(), "memory": {**mem, "used": used}, "diskFree": hardware.disk_free()}
@@ -154,6 +154,32 @@ class PullReq(BaseModel):
 def pull_model(r: PullReq):
     catalog.get(r.kind, r.id)
     models.pull(r.kind, r.id)
+    return {"ok": True}
+
+
+class CustomReq(BaseModel):
+    kind: str
+    ref: str
+
+
+@app.post("/models/custom")
+def add_custom_model(r: CustomReq):
+    """Add any Hugging Face repo (or Ollama tag) as a model choice."""
+    if r.kind not in catalog.KINDS:
+        raise HTTPException(400, f"Unknown kind: {r.kind}")
+    try:
+        m = models.add_custom(r.kind, r.ref)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"id": m["id"]}
+
+
+@app.post("/models/custom/remove")
+def remove_custom_model(r: PullReq):
+    catalog.remove_custom(r.kind, r.id)
+    s = settings.load()
+    if s.get(r.kind) == r.id:
+        settings.update({r.kind: catalog.recommend(s["language"])[r.kind]})
     return {"ok": True}
 
 
@@ -207,7 +233,10 @@ def video_detail(vid: str):
     return lib.detail(vid)
 
 
-MIME = {".mov": "video/mp4", ".m4v": "video/mp4", ".mkv": "video/webm", ".ogv": "video/ogg", ".m4a": "audio/mp4"}
+MIME = {".mov": "video/mp4", ".m4v": "video/mp4", ".mkv": "video/webm", ".ogv": "video/ogg", ".m4a": "audio/mp4",
+        ".m4b": "audio/mp4", ".aac": "audio/aac", ".flac": "audio/flac", ".oga": "audio/ogg", ".opus": "audio/ogg",
+        ".weba": "audio/webm", ".mka": "audio/webm", ".caf": "audio/x-caf", ".aif": "audio/aiff", ".aiff": "audio/aiff",
+        ".wav": "audio/wav"}
 
 
 @app.get("/videos/{vid}/media")

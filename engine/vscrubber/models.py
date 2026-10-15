@@ -86,6 +86,91 @@ def _weight_patterns(repo: str, engine: str | None, network: bool = True) -> lis
     return ignore
 
 
+WEIGHT_EXT = (".safetensors", ".bin", ".npz", ".gguf", ".pt", ".pth")
+
+
+def add_custom(kind: str, ref: str) -> dict:
+    """Make any Hugging Face repo selectable (or an Ollama tag, for descriptions), working out which
+    runtime here can load it. `ref` is `owner/name`, a huggingface.co link, or a link to one ggml file."""
+    ref = ref.strip()
+    if kind == "caption" and ref.startswith("ollama:"):
+        tag = ref.removeprefix("ollama:").strip()
+        return catalog.add_custom(kind, {"id": "ollama:" + tag, "label": tag, "ollama": tag, "note": "Ollama"})
+    parts = re.sub(r"^(https?://)?(www\.)?(huggingface\.co|hf\.co)/", "", ref).split("?")[0].strip("/").split("/")
+    if len(parts) > 1 and parts[1] in ("blob", "resolve", "tree"):  # legacy repos without an owner
+        parts = [""] + parts
+    repo = "/".join(parts[:2]).strip("/")
+    file = parts[-1] if len(parts) > 4 and parts[2] in ("blob", "resolve") else None
+    if not re.fullmatch(r"[\w.-]+(/[\w.-]+)?", repo):
+        raise ValueError("Use owner/model or a huggingface.co link")
+
+    from huggingface_hub import HfApi, get_token
+    from huggingface_hub.utils import RepositoryNotFoundError
+
+    try:
+        info = HfApi().model_info(repo)
+        files = repo_files(repo)
+    except RepositoryNotFoundError:
+        raise ValueError(f"{repo} not found on Hugging Face")
+    if info.gated and not get_token():
+        raise ValueError(f"{repo} is gated. Accept its terms on huggingface.co and run `hf auth login`, then add it again.")
+    names = {f for f, _ in files}
+    tags = set(info.tags or [])
+    cfg = info.config or {}
+    mtype = str(cfg.get("model_type", ""))
+    mlx = "mlx" in tags or info.library_name == "mlx"
+    m = {"id": "hf:" + repo, "label": repo.split("/")[-1], "note": repo.split("/")[0] if "/" in repo else "",
+         "license": (info.card_data or {}).get("license") if info.card_data else None}
+
+    if kind == "speech":
+        ggml = sorted(f for f in names if f.endswith(".bin") and "ggml" in f)
+        if file or (ggml and not mlx and "model.bin" not in names):
+            if not file and len(ggml) > 1:
+                raise ValueError("This repo has several whisper.cpp files. Paste the link to the one you want.")
+            file = file or ggml[0]
+            m.update({"id": f"hf:{repo}/{file}", "label": file.removesuffix(".bin"), "whisper.cpp": [repo, file]})
+        elif "model.bin" in names and any(f.startswith("vocabulary") for f in names):
+            m["faster-whisper"] = repo
+        elif mlx:
+            m["mlx"] = repo
+        elif info.pipeline_tag == "automatic-speech-recognition":
+            m["transformers"] = repo
+        else:
+            raise ValueError(f"{repo} isn't a speech-to-text model")
+    elif kind == "caption":
+        if mlx:
+            if not hw.mlx_vlm_ok():
+                raise ValueError("MLX models run on Apple Silicon only")
+            m["mlx"] = repo
+        elif info.pipeline_tag in ("image-text-to-text", "visual-question-answering", "image-to-text"):
+            m["transformers"] = repo
+        else:
+            raise ValueError(f"{repo} isn't a vision-language model")
+    elif kind == "vision":
+        if "siglip" in mtype:
+            m.update(transformers=repo, sigmoid=True)
+        elif "clip" in mtype:
+            m.update(transformers=repo, calib=(0.19, 0.31))
+        else:
+            raise ValueError(f"{repo} isn't a CLIP or SigLIP model")
+    else:
+        if "sentence-transformers" not in tags and info.pipeline_tag not in ("sentence-similarity", "feature-extraction"):
+            raise ValueError(f"{repo} isn't a sentence-embedding model")
+        m.update(transformers=repo, calib=(0.3, 0.6), multilingual=True, remote_code="auto_map" in cfg)
+
+    m["bytes"] = next((n for f, n in files if f == file), 0) if file else _weights_bytes(files)
+    if info.safetensors and not mlx:
+        m["params"] = info.safetensors.total
+    return catalog.add_custom(kind, m)
+
+
+def _weights_bytes(files: list[tuple[str, int]]) -> int:
+    weights = [(f, n) for f, n in files if f.endswith(WEIGHT_EXT) and not f.startswith(("onnx/", "openvino/"))]
+    if any(f.endswith(".safetensors") for f, _ in weights):
+        weights = [(f, n) for f, n in weights if f.endswith(".safetensors")]
+    return sum(n for _, n in weights)
+
+
 def download_size(kind: str, model_id: str, network: bool = True) -> int | None:
     """Bytes this model will download for the runtime it uses here, from the Hugging Face file listing."""
     import fnmatch
@@ -355,7 +440,8 @@ class Speech:
             cuda = hw.ct2_cuda()
             self.model = WhisperModel(self.target, device="cuda" if cuda else "cpu",
                                       compute_type="float16" if cuda else "int8", cpu_threads=os.cpu_count() or 4)
-        segs, _ = self.model.transcribe(wav, language=lang, vad_filter=True, beam_size=5 if hw.ct2_cuda() else 1,
+        # Hand over decoded samples: faster-whisper's own PyAV loader breaks on PyAV 15+ (metadata_errors).
+        segs, _ = self.model.transcribe(load_wav(wav), language=lang, vad_filter=True, beam_size=5 if hw.ct2_cuda() else 1,
                                         condition_on_previous_text=False)
         out = []
         for s in segs:
@@ -392,7 +478,7 @@ class Speech:
         if self.model is None:
             self.model = pipeline("automatic-speech-recognition", model=self.target, dtype=hw.torch_dtype(),
                                   device=hw.torch_device())
-        whisper = "whisper" in self.target
+        whisper = self.model.model.config.model_type == "whisper"
         audio = load_wav(wav)
         sr, win = 16000, 30 if whisper else 15
         out = []

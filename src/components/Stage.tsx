@@ -44,7 +44,7 @@ export function Stage({ video, detail, src, t, curScene, videoRef, onMeta, onEnd
   const audioOnly = video && !video.probe.hasVideo;
   const scene = detail?.scenes[curScene];
   return (
-    <div style={{ flex: '1 1 auto', minHeight: 260, position: 'relative', borderRadius: 16, border: '1px solid #E4E9F0', background: '#EAEEF4', overflow: 'hidden', containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties}>
+    <div style={{ flex: '1 1 auto', minHeight: 260, position: 'relative', borderRadius: 0, border: '1px solid #E4E9F0', background: '#EAEEF4', overflow: 'hidden', containerType: 'size', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties}>
       {video && src && (
         <video
           key={src}
@@ -61,22 +61,22 @@ export function Stage({ video, detail, src, t, curScene, videoRef, onMeta, onEnd
       )}
       {!video && (
         <Placeholder
-          left="No video" right="00:00.0" bg={grad(214)} onClick={onOpen}
-          headline={<>Drop videos here, or open a few to <i>comb through at once</i></>}
-          foot="MP4 · MOV · MKV · WebM · AVI · audio files too"
+          left="Empty" right="00:00.0" bg={grad(214)} onClick={onOpen}
+          headline={<>Drop video or <i>audio</i></>}
+          foot="Or click to open"
         />
       )}
       {audioOnly && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
           <div style={{ pointerEvents: 'auto', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Placeholder left="Audio" right={fmtD(t)} bg={grad(hueOf(video.name))} onClick={onPlay} headline={video.name} foot={`${detail?.transcript.length ?? 0} segments transcribed`} />
+            <Placeholder left="Audio" right={fmtD(t)} bg={grad(hueOf(video.name))} onClick={onPlay} headline={video.name} foot={`${detail?.transcript.length ?? 0} segments`} />
           </div>
         </div>
       )}
       {video && !audioOnly && !video.exists && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Placeholder left="Missing" right="" bg={scene ? `center / cover no-repeat url("${frameUrl(video.id, scene.f)}")` : grad(hueOf(video.name))} onClick={onOpen}
-            headline={<>This file has <i>moved</i></>} foot={video.path} />
+            headline={<>File <i>missing</i></>} foot={video.path} />
         </div>
       )}
     </div>

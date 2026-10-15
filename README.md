@@ -10,6 +10,7 @@ Describe a moment and find it. Video Scrubber transcribes your videos, pulls a k
 - **Comb many videos**: open or drop as many videos as you like. They index in parallel, and Find can search *this video* or *all videos*.
 - **Clips**: drag a range on the timeline (or press `I`/`O`), then export a frame-accurate video clip on the hardware encoder, extract the audio, or save the frame.
 - **Download**: paste a link to a file, most video sites, or a whole playlist. It downloads and indexes automatically.
+- **Audio files**: MP3, M4A, WAV, FLAC, AIFF, Ogg, Opus, WMA and anything else ffmpeg reads get transcribed and searched like video.
 
 The UI implements the *Video Scrubber v2* design (`design/Video Scrubber v2.dc.html`).
 
@@ -49,9 +50,13 @@ Every model downloads from Hugging Face the first time it's needed, then runs of
 | Speech to text | Whisper large-v3 turbo, large-v3, medium, medium.en, small, base, tiny · Distil-Whisper large-v3.5, large-v3, small.en · Moonshine base, tiny | MLX, faster-whisper, whisper.cpp, PyTorch |
 | Frame descriptions | Qwen3-VL 8B / 4B / 2B · Qwen2.5-VL 7B · InternVL3 8B / 2B / 1B · SmolVLM2 2.2B · SmolVLM 500M / 256M | MLX 4-bit, PyTorch |
 | Picture search | SigLIP so400m, SigLIP 2 base, SigLIP base · CLIP ViT-L/14, ViT-B/32 | PyTorch |
-| Meaning search | BGE-M3, mxbai embed large, BGE base/small en v1.5, Nomic Embed v1.5, Multilingual E5 small, MiniLM L6 v2 | PyTorch |
+| Text search | BGE-M3, mxbai embed large, BGE base/small en v1.5, Nomic Embed v1.5, Multilingual E5 small, MiniLM L6 v2 | PyTorch |
 
-Quality and speed are curated relative rankings within each job, not benchmark scores. Gated models (ones that need a Hugging Face account) aren't included. If [Ollama](https://ollama.com) is running, Gemma 3, MiniCPM-V, Llama 3.2 Vision, LLaVA and Moondream show up as extra frame describers.
+Quality and speed are curated relative rankings within each job, not benchmark scores. Gated models (ones that need a Hugging Face account) aren't included in the list.
+
+**Any other model.** Each section of the Models dialog takes a Hugging Face repo id or link (`owner/model`), and the engine works out which runtime loads it: CTranslate2, MLX, ggml (link the file) or Transformers speech models; MLX or Transformers vision-language models (or `ollama:tag`); CLIP and SigLIP for picture search; sentence-embedding models for text search. For a gated repo, accept its terms on huggingface.co and sign in with `hf auth login` first.
+
+If [Ollama](https://ollama.com) is running, Gemma 3, MiniCPM-V, Llama 3.2 Vision, LLaVA and Moondream show up as extra frame describers.
 
 ## Develop
 

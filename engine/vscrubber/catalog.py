@@ -16,6 +16,8 @@ Per model:
 """
 
 import itertools
+import json
+import threading
 
 # Speech runtimes: mlx (Apple Metal), faster-whisper (CTranslate2: CUDA or CPU int8),
 # whisper.cpp (Metal / CUDA / Vulkan / CPU via the whisper-cli binary), transformers (torch device).
@@ -146,8 +148,48 @@ KINDS = {"speech": SPEECH, "vision": VISION, "caption": CAPTION, "text": TEXT}
 SPEECH_ENGINES = ["mlx", "faster-whisper", "whisper.cpp", "transformers"]
 
 
+# Models added by repo id from the Models dialog, kept in custom-models.json.
+_custom: dict[str, list[dict]] | None = None
+_custom_lock = threading.Lock()
+
+
+def _custom_file():
+    from .paths import data_dir
+
+    return data_dir() / "custom-models.json"
+
+
+def _customs() -> dict[str, list[dict]]:
+    global _custom
+    if _custom is None:
+        try:
+            _custom = json.loads(_custom_file().read_text())
+        except (OSError, ValueError):
+            _custom = {}
+    return _custom
+
+
+def models(kind: str) -> list[dict]:
+    """Built-in models of `kind`, then the ones the user added."""
+    return KINDS[kind] + _customs().get(kind, [])
+
+
+def add_custom(kind: str, model: dict) -> dict:
+    with _custom_lock:
+        rows = [m for m in _customs().setdefault(kind, []) if m["id"] != model["id"]]
+        _customs()[kind] = rows + [{**model, "custom": True}]
+        _custom_file().write_text(json.dumps(_customs(), indent=2))
+    return model
+
+
+def remove_custom(kind: str, model_id: str):
+    with _custom_lock:
+        _customs()[kind] = [m for m in _customs().get(kind, []) if m["id"] != model_id]
+        _custom_file().write_text(json.dumps(_customs(), indent=2))
+
+
 def get(kind: str, model_id: str) -> dict:
-    for m in KINDS[kind]:
+    for m in models(kind):
         if m["id"] == model_id:
             return m
     raise KeyError(f"Unknown {kind} model: {model_id}")
@@ -198,7 +240,8 @@ def engine_for(kind: str, model: dict, preferred: str = "auto") -> str | None:
 
 
 def repo_for(kind: str, model: dict, engine: str):
-    return model.get(engine) if engine in ("mlx", "faster-whisper", "whisper.cpp", "transformers") else None
+    target = model.get(engine) if engine in ("mlx", "faster-whisper", "whisper.cpp", "transformers") else None
+    return tuple(target) if isinstance(target, list) else target  # (repo, file) pairs come back from JSON as lists
 
 
 def _engine_available(engine: str) -> bool:
@@ -236,7 +279,11 @@ def bytes_per_param(kind: str, engine: str) -> float:
 
 
 def memory_needed(kind: str, model: dict, engine: str | None) -> int:
-    if not engine or engine in ("none", "ollama") or not model.get("params"):
+    if not engine or engine in ("none", "ollama"):
+        return 0
+    if model.get("bytes"):  # added models: size the weights on disk instead of guessing the precision
+        return int(model["bytes"] * 1.2 + OVERHEAD[kind])
+    if not model.get("params"):
         return 0
     return int(model["params"] * bytes_per_param(kind, engine) * 1.15 + OVERHEAD[kind])
 

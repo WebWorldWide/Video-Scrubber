@@ -57,6 +57,7 @@ export type ModelRow = {
   recommended: boolean;
   available: boolean;
   installed: boolean;
+  custom: boolean;
 };
 export type ModelKind = 'speech' | 'vision' | 'caption' | 'text';
 export type Memory = { ram: number; gpuMem: number | null; unified: boolean; budget: number; device: 'gpu' | 'cpu'; used: number };
@@ -113,6 +114,8 @@ export const api = {
   models: () => req<Models>('GET', '/models'),
   pull: (kind: ModelKind, id: string) => req('POST', '/models/pull', { kind, id }),
   useRecommended: () => req<Settings>('POST', '/models/recommended'),
+  addModel: (kind: ModelKind, ref: string) => req<{ id: string }>('POST', '/models/custom', { kind, ref }),
+  removeModel: (kind: ModelKind, id: string) => req('POST', '/models/custom/remove', { kind, id }),
   library: () => req<Video[]>('GET', '/library'),
   add: (paths: string[]) => req<{ added: Video[]; errors: { path: string; error: string }[] }>('POST', '/library', { paths }),
   remove: (id: string) => req('DELETE', `/library/${id}`),

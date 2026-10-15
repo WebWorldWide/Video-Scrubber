@@ -4,20 +4,20 @@ import { frameUrl, type Detail, type Result, type Segment, type Video } from '..
 import { fmt, fmtSize, grad, hueOf, pad } from '../format';
 import { IconFilm, IconImage, IconReveal, IconSearch, IconWave, IconX } from '../icons';
 
-const STEPS = ['Transcribing speech', 'Pulling key frames', 'Indexing picture + speech'];
+const STEPS = ['Transcribe', 'Key frames', 'Index'];
 
 export const ScanBar = () => (
-  <div style={{ position: 'relative', height: 2, borderRadius: 2, background: '#E4E9F0', overflow: 'hidden' }}>
+  <div style={{ position: 'relative', height: 2, borderRadius: 0, background: '#E4E9F0', overflow: 'hidden' }}>
     <div style={{ position: 'absolute', top: 0, bottom: 0, width: '40%', background: '#2563EB', animation: 'vsScan 1.1s cubic-bezier(.4,0,.2,1) infinite' }} />
   </div>
 );
 
-/** "Indexing on this device" card for the active video, plus a count of others in the queue. */
+/** Indexing progress for the active file, plus a count of others in the queue. */
 export function ProcCard({ video, others }: { video: Video; others: number }) {
   const queued = video.status === 'queued';
   return (
-    <div style={{ flex: 'none', margin: '14px 20px 0', padding: 14, borderRadius: 12, background: '#FFFFFF', border: '1px solid #E4E9F0', boxShadow: '0 1px 2px rgba(20,24,31,.04)', display: 'flex', flexDirection: 'column', gap: 9 }}>
-      <span className="eyebrow">{queued ? 'Waiting to index' : 'Indexing on this device'}</span>
+    <div style={{ flex: 'none', margin: '14px 20px 0', padding: 14, borderRadius: 0, background: '#FFFFFF', border: '1px solid #E4E9F0', boxShadow: '0 1px 2px rgba(20,24,31,.04)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <span className="eyebrow">{queued ? 'Queued' : 'Indexing'}</span>
       {STEPS.map((label, i) => {
         const done = !queued && i < video.step, act = !queued && i === video.step;
         const dot = done ? '#1F9D57' : act ? '#2563EB' : '#D0D7E2';
@@ -31,18 +31,16 @@ export function ProcCard({ video, others }: { video: Video; others: number }) {
                 {done ? 'Done' : act ? video.note || Math.round(video.pct * 100) + '%' : ''}
               </span>
             </div>
-            <div style={{ height: 2, borderRadius: 2, background: '#E4E9F0', overflow: 'hidden', marginLeft: 15 }}><div style={{ height: '100%', width: w, background: dot }} /></div>
+            <div style={{ height: 2, borderRadius: 0, background: '#E4E9F0', overflow: 'hidden', marginLeft: 15 }}><div style={{ height: '100%', width: w, background: dot }} /></div>
           </div>
         );
       })}
-      {others > 0 && <span style={{ fontSize: 11.5, color: '#6B7584' }}>{others} more {others === 1 ? 'video' : 'videos'} in the queue</span>}
+      {others > 0 && <span style={{ fontSize: 11.5, color: '#6B7584' }}>+{others} queued</span>}
     </div>
   );
 }
 
 // ------------------------------------------------------------------ Find
-
-const SUGGESTIONS = ['someone mentions the price', 'a chart or a slide', 'a person talking to the camera', 'the opening title', 'people laughing', 'text on screen'];
 
 type FindProps = {
   q: string;
@@ -80,28 +78,16 @@ export function FindPane(p: FindProps) {
         />
         <button className="search-btn" onClick={() => p.onSearch()} title="Search (Enter)"><IconSearch /></button>
       </div>
-      <div style={{ fontSize: 12, color: '#4A5464', lineHeight: 1.5, textWrap: 'pretty' } as React.CSSProperties}>Searches what's said and what's on screen. Nothing leaves this machine.</div>
       {many && (
         <div className="seg-ctl">
-          <button className={p.scope === 'this' ? 'on' : ''} onClick={() => p.onScope('this')}>This video</button>
-          <button className={p.scope === 'all' ? 'on' : ''} onClick={() => p.onScope('all')}>All {p.libraryCount} videos</button>
+          <button className={p.scope === 'this' ? 'on' : ''} onClick={() => p.onScope('this')}>This file</button>
+          <button className={p.scope === 'all' ? 'on' : ''} onClick={() => p.onScope('all')}>All {p.libraryCount}</button>
         </div>
       )}
 
-      {!p.searching && !p.results && p.hasVideo && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-          <span className="eyebrow">Try</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {SUGGESTIONS.map(s => <button key={s} className="chip" onClick={() => { p.onQ(s); p.onSearch(s); }}>{s}</button>)}
-          </div>
-        </div>
-      )}
       {!p.hasVideo && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12 }}>
-          <span className="serif" style={{ fontSize: 26, lineHeight: 1.05 }}>Open a few videos, <i>then ask</i></span>
-          <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5, maxWidth: '38ch', textWrap: 'pretty' } as React.CSSProperties}>
-            Each one is transcribed and its key frames pulled on this machine. Search one video, or all of them at once.
-          </span>
+          <span className="serif" style={{ fontSize: 26, lineHeight: 1.05 }}>No files <i>open</i></span>
         </div>
       )}
 
@@ -109,7 +95,7 @@ export function FindPane(p: FindProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 }}>
           <ScanBar />
           <span style={{ fontSize: 12.5, color: '#4A5464' }}>
-            {multiVideo ? `Looking through ${p.readyCount} videos of speech and picture…` : `Looking through ${p.durLabel} of speech and picture…`}
+            {multiVideo ? `Searching ${p.readyCount} files…` : `Searching ${p.durLabel}…`}
           </span>
         </div>
       )}
@@ -117,12 +103,12 @@ export function FindPane(p: FindProps) {
       {p.results && p.results.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span className="eyebrow">
-            {p.results.length} {p.results.length === 1 ? 'moment' : 'moments'} found{multiVideo ? ` in ${vids} ${vids === 1 ? 'video' : 'videos'}` : ''}
+            {p.results.length} {p.results.length === 1 ? 'result' : 'results'}{multiVideo ? ` · ${vids} ${vids === 1 ? 'file' : 'files'}` : ''}
           </span>
           {p.results.map((r, i) => (
             <div key={r.videoId + r.t} className="result" onClick={() => p.onPick(r)}>
-              <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 4, overflow: 'hidden', background: r.frame ? `center / cover no-repeat url("${frameUrl(r.videoId, r.frame)}")` : grad(hueOf(r.videoName)), alignSelf: 'start' }}>
-                <span style={{ position: 'absolute', left: 4, top: 4, width: 16, height: 16, borderRadius: '50%', background: '#14181F', color: '#FFFFFF', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+              <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 0, overflow: 'hidden', background: r.frame ? `center / cover no-repeat url("${frameUrl(r.videoId, r.frame)}")` : grad(hueOf(r.videoName)), alignSelf: 'start' }}>
+                <span style={{ position: 'absolute', left: 4, top: 4, width: 16, height: 16, borderRadius: 0, background: '#14181F', color: '#FFFFFF', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
               </div>
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -136,16 +122,12 @@ export function FindPane(p: FindProps) {
               </div>
             </div>
           ))}
-          <span style={{ fontSize: 11.5, color: '#6B7584', marginTop: 2 }}>Selecting a result sets a range there, ready to clip.</span>
         </div>
       )}
 
       {p.results && p.results.length === 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
           <span className="serif" style={{ fontSize: 26, lineHeight: 1.05 }}>Nothing matched <i>{p.lastQ}</i></span>
-          <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5, textWrap: 'pretty' } as React.CSSProperties}>
-            Try describing what's on screen — a person, an object, a slide — or a phrase someone says.
-          </span>
         </div>
       )}
     </div>
@@ -182,7 +164,7 @@ export const TranscriptPane = memo(function TranscriptPane({ detail, curSeg, pla
         <button className="ghost-sm" style={{ marginLeft: 'auto' }} onClick={() => onExport('txt')} disabled={!segs.length}>.txt</button>
         <button className="ghost-sm" onClick={() => onExport('srt')} disabled={!segs.length}>.srt</button>
       </div>
-      {!segs.length && <Empty title={<>No speech <i>yet</i></>} body={detail ? (detail.probe.hasAudio ? 'The transcript appears here once speech has been transcribed.' : 'This video has no audio track.') : 'Open a video to transcribe it.'} />}
+      {!segs.length && <Empty title={<>No speech <i>yet</i></>} body={detail && !detail.probe.hasAudio ? 'No audio track' : ''} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: '0 -8px' }}>
         {segs.map((g, i) => <SegRow key={i} g={g} active={i === curSeg} onSeek={onSeek} rowRef={i === curSeg ? follow : undefined} />)}
       </div>
@@ -208,16 +190,16 @@ export const ShowPane = memo(function ShowPane({ detail, curScene, curSeg, onSee
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12, color: '#4A5464', lineHeight: 1.5, textWrap: 'pretty', flex: 1 } as React.CSSProperties}>Transcript with a key frame pulled at every scene change, so each line has its picture.</span>
+        <span className="eyebrow" style={{ flex: 1 }}>{scenes.length} key frames</span>
         <button className="ghost-sm" onClick={onExport} disabled={!scenes.length}>.txt</button>
       </div>
-      {!scenes.length && <Empty title={<>No key frames <i>yet</i></>} body={detail ? 'Key frames appear here as soon as they are pulled.' : 'Open a video to pull its key frames.'} />}
+      {!scenes.length && <Empty title={<>No key frames <i>yet</i></>} body={detail && !detail.probe.hasVideo ? 'Audio only' : ''} />}
       {scenes.map((s, i) => (
         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div onClick={() => onSeek(s.t + 0.01)} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 6, overflow: 'hidden', background: `center / cover no-repeat url("${frameUrl(detail!.id, s.f)}"), ${grad(210)}`, cursor: 'pointer', outline: `2px solid ${i === curScene ? '#2563EB' : 'transparent'}`, outlineOffset: 2 }}>
+          <div onClick={() => onSeek(s.t + 0.01)} style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 0, overflow: 'hidden', background: `center / cover no-repeat url("${frameUrl(detail!.id, s.f)}"), ${grad(210)}`, cursor: 'pointer', outline: `2px solid ${i === curScene ? '#2563EB' : 'transparent'}`, outlineOffset: 2 }}>
             <div className="tnum" style={{ position: 'absolute', left: 10, top: 9, right: 10, display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, fontStretch: '80%', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2A3240' }}>
-              <span style={{ padding: '3px 7px', borderRadius: 999, background: 'rgba(255,255,255,.88)' }}>Key frame {pad(i + 1)}</span>
-              <span style={{ padding: '3px 7px', borderRadius: 999, background: 'rgba(255,255,255,.88)' }}>{fmt(s.t)}</span>
+              <span style={{ padding: '3px 7px', borderRadius: 0, background: 'rgba(255,255,255,.88)' }}>Key frame {pad(i + 1)}</span>
+              <span style={{ padding: '3px 7px', borderRadius: 0, background: 'rgba(255,255,255,.88)' }}>{fmt(s.t)}</span>
             </div>
           </div>
           {s.d && <div className="serif" style={{ fontSize: 22, lineHeight: 1.1, color: '#14181F', textWrap: 'balance' } as React.CSSProperties}>{s.d}</div>}
@@ -242,14 +224,11 @@ export function ClipsPane({ clips, onReveal, onSeek, onRemove }: { clips: Clip[]
       {!clips.length && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 24 }}>
           <span className="serif" style={{ fontSize: 30, lineHeight: 1 }}>No clips <i>yet</i></span>
-          <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5, maxWidth: '34ch', textWrap: 'pretty' } as React.CSSProperties}>
-            Select a range on the timeline, then clip it as video, pull the audio, or save the frame under the playhead.
-          </span>
         </div>
       )}
       {clips.map(c => (
         <div key={c.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 6, background: '#EEF2F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}>
+          <div style={{ width: 34, height: 34, flex: 'none', borderRadius: 0, background: '#EEF2F7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}>
             {c.kind === 'Video' ? <IconFilm size={16} /> : c.kind === 'Audio' ? <IconWave size={16} /> : <IconImage size={16} />}
           </div>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -271,7 +250,7 @@ function Empty({ title, body }: { title: React.ReactNode; body: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16 }}>
       <span className="serif" style={{ fontSize: 26, lineHeight: 1.05 }}>{title}</span>
-      <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5, maxWidth: '36ch', textWrap: 'pretty' } as React.CSSProperties}>{body}</span>
+      {body && <span style={{ fontSize: 12.5, color: '#4A5464', lineHeight: 1.5, maxWidth: '36ch', textWrap: 'pretty' } as React.CSSProperties}>{body}</span>}
     </div>
   );
 }

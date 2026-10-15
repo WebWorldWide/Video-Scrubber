@@ -8,7 +8,7 @@ import { ScanBar } from './Panes';
 export function EngineGate({ engine }: { engine: EngineState }) {
   if (engine.state === 'installing') {
     return (
-      <Dialog title={<>Setting up the <i>local engine</i></>} sub="A one-time install of the speech, vision and search runtimes for this machine's hardware. Models download the first time they're used.">
+      <Dialog title={<>Setting <i>up</i></>} sub="One-time install">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
             <span className="tnum" style={{ fontSize: 30, fontWeight: 500, letterSpacing: '-0.01em' }}>{Math.round(engine.pct * 100)}%</span>
@@ -24,7 +24,7 @@ export function EngineGate({ engine }: { engine: EngineState }) {
   }
   if (engine.state === 'error') {
     return (
-      <Dialog title={<>The engine <i>stopped</i></>} sub="Video Scrubber couldn't start its local engine.">
+      <Dialog title={<>Engine <i>stopped</i></>}>
         <span style={{ fontSize: 12.5, color: '#B42318', lineHeight: 1.5, overflowWrap: 'anywhere' }}>{engine.error}</span>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button className="primary" onClick={() => native.restartEngine()}>Try again</button>

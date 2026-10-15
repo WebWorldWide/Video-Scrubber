@@ -245,15 +245,15 @@ def save_frame(path: str, t: float, out: Path):
 
 
 def make_proxy(path: str, out: Path, duration: float, cb: Progress | None = None, cancel=None):
-    """H.264/AAC copy for formats the player can't decode (HEVC, ProRes, AVI, …)."""
+    """H.264/AAC copy for formats the player can't decode (HEVC, ProRes, AVI, …); AAC alone for audio files."""
     tmp = out.with_suffix(".part.mp4")
     base = [ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-hwaccel", "auto", *_pre_args(), "-i", path,
-            "-map", "0:v:0", "-map", "0:a:0?"]
+            "-map", "0:v:0?", "-map", "0:a:0?"]
     tail = ["-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(tmp)]
     try:
         _run_progress([*base, *_video_codec_args(), *tail], duration, cb, cancel)
     except RuntimeError:
-        _run_progress([ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-i", path, "-map", "0:v:0",
+        _run_progress([ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-i", path, "-map", "0:v:0?",
                        "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                        *tail], duration, cb, cancel)
     tmp.replace(out)
