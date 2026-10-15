@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Loads and runs local models. One instance per kind stays warm; switching models unloads the old one."""
 
 import base64
@@ -37,37 +38,87 @@ def _repo_dir(repo: str) -> Path:
     return _hf_cache() / ("models--" + repo.replace("/", "--"))
 
 
-def _weight_patterns(repo: str, engine: str | None) -> tuple[list[str] | None, list[str]]:
+IGNORE = ["*.h5", "*.msgpack", "*.ot", "*.onnx", "onnx/*", "openvino/*", "*.tflite", "coreml/*", "*fp32*",
+          "flax_model*", "tf_model*", "rust_model*", "*.mlmodel*", "*.gguf", "*.ckpt"]
+_files_cache: dict[str, list[tuple[str, int]]] = {}
+
+
+def repo_files(repo: str, network: bool = True) -> list[tuple[str, int]]:
+    """(path, bytes) for every file in a Hugging Face repo, cached in memory and on disk.
+    With network=False, raises LookupError instead of asking Hugging Face."""
+    if repo in _files_cache:
+        return _files_cache[repo]
+    from huggingface_hub import HfApi
+
+    from .paths import data_dir
+
+    cache_file = data_dir() / "hf-files.json"
+    try:
+        disk = json.loads(cache_file.read_text())
+    except (OSError, ValueError):
+        disk = {}
+    if repo in disk:
+        _files_cache[repo] = [tuple(x) for x in disk[repo]]
+        return _files_cache[repo]
+    if not network:
+        raise LookupError(repo)
+    info = HfApi().model_info(repo, files_metadata=True)
+    files = [(s.rfilename, s.size or 0) for s in info.siblings]
+    _files_cache[repo] = files
+    disk[repo] = files
+    try:
+        cache_file.write_text(json.dumps(disk))
+    except OSError:
+        pass
+    return files
+
+
+def _weight_patterns(repo: str, engine: str | None, network: bool = True) -> list[str]:
     """Fetch one copy of the weights: skip TF/Flax/ONNX/OpenVINO and duplicate .bin when safetensors exist."""
     if engine in ("mlx", "faster-whisper"):
-        return None, []
-    ignore = ["*.h5", "*.msgpack", "*.ot", "*.onnx", "onnx/*", "openvino/*", "*.tflite", "coreml/*", "*fp32*",
-              "flax_model*", "tf_model*", "rust_model*", "*.mlmodel*"]
+        return []
+    ignore = list(IGNORE)
     try:
-        from huggingface_hub import HfApi
-
-        files = HfApi().list_repo_files(repo)
-        if any(f.endswith(".safetensors") for f in files):
+        if any(f.endswith(".safetensors") for f, _ in repo_files(repo, network)):
             ignore += ["*.bin", "*.pt", "*.pth"]
     except Exception:
         pass
-    return None, ignore
+    return ignore
+
+
+def download_size(kind: str, model_id: str, network: bool = True) -> int | None:
+    """Bytes this model will download for the runtime it uses here, from the Hugging Face file listing."""
+    import fnmatch
+
+    try:
+        r = resolve(kind, model_id)
+        if r["type"] == "hf_file":
+            return next((n for f, n in repo_files(r["repo"], network) if f == r["file"]), None)
+        if r["type"] != "hf":
+            return 0 if r["type"] == "none" else None
+        files = repo_files(r["repo"], network)
+        ignore = _weight_patterns(r["repo"], r["engine"], network)
+        return sum(n for f, n in files if not any(fnmatch.fnmatch(f, p) for p in ignore))
+    except Exception:
+        return None
 
 
 def resolve(kind: str, model_id: str, engine: str | None = None) -> dict:
     """What has to be on disk for a model: an HF repo, one file in a repo, or an Ollama tag."""
+    from . import settings
+
     m = catalog.get(kind, model_id)
-    if kind == "speech":
-        engine = engine or catalog.speech_engine_for(m)
-        target = m[engine]
-        if isinstance(target, tuple):
-            return {"type": "hf_file", "repo": target[0], "file": target[1], "engine": engine}
-        return {"type": "hf", "repo": target, "engine": engine}
-    if m.get("ollama"):
+    engine = engine or catalog.engine_for(kind, m, settings.load()["speechEngine"] if kind == "speech" else "auto")
+    if engine == "ollama":
         return {"type": "ollama", "tag": m["ollama"]}
-    if m.get("repo"):
-        return {"type": "hf", "repo": m["repo"], "engine": None}
-    return {"type": "none"}
+    if engine in (None, "none"):
+        if model_id == "none":
+            return {"type": "none"}
+        raise RuntimeError(f"No installed runtime can run {m['label']}")
+    target = catalog.repo_for(kind, m, engine)
+    if isinstance(target, tuple):
+        return {"type": "hf_file", "repo": target[0], "file": target[1], "engine": engine}
+    return {"type": "hf", "repo": target, "engine": engine}
 
 
 def is_installed(kind: str, model_id: str, ollama_tags: list[str] | None = None) -> bool:
@@ -136,6 +187,7 @@ def _pull(kind, model_id, key, cb: Progress | None = None):
 
     try:
         r = resolve(kind, model_id)
+        _check_disk(kind, model_id, r)
         if r["type"] == "ollama":
             _ollama_pull(r["tag"], report)
         elif r["type"] == "hf_file":
@@ -145,9 +197,9 @@ def _pull(kind, model_id, key, cb: Progress | None = None):
         elif r["type"] == "hf":
             from huggingface_hub import snapshot_download
 
-            allow, ignore = _weight_patterns(r["repo"], r["engine"])
+            ignore = _weight_patterns(r["repo"], r["engine"])
             _with_size_poll(r["repo"], None, report,
-                            lambda: snapshot_download(r["repo"], allow_patterns=allow, ignore_patterns=ignore or None))
+                            lambda: snapshot_download(r["repo"], ignore_patterns=ignore or None))
             (_repo_dir(r["repo"]) / ".vs-complete").touch()
         bus.publish("model", kind=kind, id=model_id, state="installed", pct=1)
     except Exception as e:
@@ -157,14 +209,26 @@ def _pull(kind, model_id, key, cb: Progress | None = None):
         _pulls.pop(key, None)
 
 
+def _check_disk(kind, model_id, r):
+    if r["type"] not in ("hf", "hf_file"):
+        return
+    need = download_size(kind, model_id) or 0
+    have = _dir_size(_repo_dir(r["repo"])) if _repo_dir(r["repo"]).exists() else 0
+    free = hw.disk_free()
+    if need - have > free - 2 * catalog.GB:
+        raise RuntimeError(f"Not enough disk space: {catalog.get(kind, model_id)['label']} needs "
+                           f"{(need - have) / 1e9:.1f} GB and {free / 1e9:.1f} GB is free")
+
+
 def _with_size_poll(repo, files, report, fn):
     """Report progress by watching the cache directory grow against the repo's listed sizes."""
+    import fnmatch
+
     total = 0
     try:
-        from huggingface_hub import HfApi
-
-        info = HfApi().model_info(repo, files_metadata=True)
-        total = sum((s.size or 0) for s in info.siblings if files is None or s.rfilename in files)
+        ignore = [] if files else _weight_patterns(repo, None)
+        total = sum(n for f, n in repo_files(repo)
+                    if (f in files if files else not any(fnmatch.fnmatch(f, p) for p in ignore)))
     except Exception:
         pass
     d = _repo_dir(repo)
@@ -375,8 +439,8 @@ class Vision:
         self.meta = catalog.get("vision", model_id)
         self.device = hw.torch_device()
         self.dtype = hw.torch_dtype()
-        self.model = AutoModel.from_pretrained(self.meta["repo"], dtype=self.dtype).to(self.device).eval()
-        self.proc = AutoProcessor.from_pretrained(self.meta["repo"])
+        self.model = AutoModel.from_pretrained(self.meta["transformers"], dtype=self.dtype).to(self.device).eval()
+        self.proc = AutoProcessor.from_pretrained(self.meta["transformers"])
         self.sigmoid = self.meta.get("sigmoid", False)
         if self.sigmoid:
             self.scale = float(self.model.logit_scale.exp().item())
@@ -427,20 +491,32 @@ CAPTION_PROMPT = ("Describe this video frame in one plain sentence of at most 30
 class Captioner:
     def __init__(self, model_id: str, engine: str = "auto"):
         self.meta = catalog.get("caption", model_id)
+        self.engine = catalog.engine_for("caption", self.meta)
         self.tag = self.meta.get("ollama")
-        if not self.tag and self.meta.get("repo"):
+        repo = catalog.repo_for("caption", self.meta, self.engine)
+        if self.engine == "mlx":
+            from mlx_vlm import load
+            from mlx_vlm.prompt_utils import apply_chat_template
+
+            self.model, self.proc = load(repo)
+            self.prompt = apply_chat_template(self.proc, self.model.config, CAPTION_PROMPT, num_images=1)
+        elif self.engine == "transformers":
             import torch
             from transformers import AutoModelForImageTextToText, AutoProcessor
 
             self.torch = torch
             self.device = hw.torch_device()
-            self.proc = AutoProcessor.from_pretrained(self.meta["repo"])
-            self.model = AutoModelForImageTextToText.from_pretrained(
-                self.meta["repo"], dtype=hw.torch_dtype()).to(self.device).eval()
+            self.proc = AutoProcessor.from_pretrained(repo)
+            self.model = AutoModelForImageTextToText.from_pretrained(repo, dtype=hw.torch_dtype()).to(self.device).eval()
 
     def describe(self, path: str) -> str:
-        if self.tag:
+        if self.engine == "ollama":
             return self._ollama(path)
+        if self.engine == "mlx":
+            from mlx_vlm import generate
+
+            r = generate(self.model, self.proc, self.prompt, [path], max_tokens=70, temperature=0.0, verbose=False)
+            return _tidy(getattr(r, "text", r))
         return self._local(path)
 
     def _ollama(self, path: str) -> str:
@@ -482,7 +558,7 @@ class TextEmbedder:
 
         self.meta = catalog.get("text", model_id)
         dev = hw.torch_accel()["device"]
-        self.model = SentenceTransformer(self.meta["repo"], device=dev if dev != "directml" else "cpu",
+        self.model = SentenceTransformer(self.meta["transformers"], device=dev if dev != "directml" else "cpu",
                                          trust_remote_code=self.meta.get("remote_code", False))
 
     def docs(self, texts: list[str]) -> np.ndarray:

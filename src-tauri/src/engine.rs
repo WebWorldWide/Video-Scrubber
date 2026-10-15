@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Supervises the local Python engine: first-run setup, spawn, ready detection and restarts.
 
 use std::io::{BufRead, BufReader};

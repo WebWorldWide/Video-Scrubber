@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { memo, useEffect, useMemo, useRef, type KeyboardEvent, type RefObject } from 'react';
 import { frameUrl, type Detail, type Result, type Segment, type Video } from '../api';
 import { fmt, fmtSize, grad, hueOf, pad } from '../format';

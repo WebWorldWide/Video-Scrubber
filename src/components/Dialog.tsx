@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import type { ReactNode } from 'react';
 import { IconX } from '../icons';
 

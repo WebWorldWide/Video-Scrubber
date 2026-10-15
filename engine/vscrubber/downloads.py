@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Link downloads through yt-dlp (direct files, most video sites, and playlists)."""
 
 import json

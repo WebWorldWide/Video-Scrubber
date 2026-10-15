@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Globals and interactive states from "Video Scrubber v2" (design/Video Scrubber v2.dc.html). */
 html, body { margin: 0; background: #F5F7FA; color: #14181F; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #D0D7E2 transparent; }

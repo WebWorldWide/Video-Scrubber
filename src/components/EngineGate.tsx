@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import type { EngineState } from '../api';
 import { native } from '../native';
 import { Dialog } from './Dialog';

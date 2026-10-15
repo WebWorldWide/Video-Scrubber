@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 import json
 import threading
 
@@ -22,6 +23,13 @@ def load() -> dict:
                 base.update(json.loads(_file().read_text()))
             except (OSError, ValueError):
                 pass
+            rec = None
+            for k in catalog.KINDS:
+                try:
+                    catalog.get(k, base[k])
+                except KeyError:
+                    rec = rec or catalog.recommend(base["language"])
+                    base[k] = rec[k]
             _cache = base
         return dict(_cache)
 

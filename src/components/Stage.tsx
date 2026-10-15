@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import type { ReactNode, RefObject } from 'react';
 import { frameUrl, type Detail, type Video } from '../api';
 import { fmtD, grad, hueOf } from '../format';

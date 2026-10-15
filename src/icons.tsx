@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Icons from the design, stroke-drawn at 24×24.
 import type { CSSProperties } from 'react';
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Describe-a-moment search across one or many indexed videos.
 
 Each speech segment and key frame gets a 0–1 relevance from up to three signals:

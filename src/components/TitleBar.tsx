@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Per-OS title bars from the design. macOS keeps native traffic lights (inset over this bar);
 // Windows and Linux draw the design's caption buttons. `data-tauri-drag-region` moves the window
 // and double-click maximizes; it applies to the marked element itself, so labels ignore the pointer.

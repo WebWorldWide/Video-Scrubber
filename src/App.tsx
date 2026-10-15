@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { api, configure, frameUrl, mediaUrl, subscribe, type Detail, type DlItem, type EngineEvent, type EngineState, type Hardware, type Result, type Settings, type Video } from './api';
 import { DownloadDialog, initialDl, type DlState } from './components/DownloadDialog';

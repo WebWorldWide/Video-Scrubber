@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import '@fontsource-variable/archivo/wdth.css';
 import '@fontsource-variable/archivo/wdth-italic.css';
 import '@fontsource/instrument-serif/400.css';

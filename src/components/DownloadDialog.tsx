@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { useEffect, useRef } from 'react';
 import type { DlInfo, DlItem } from '../api';
 import { fmt, fmtSize, grad, hueOf } from '../format';

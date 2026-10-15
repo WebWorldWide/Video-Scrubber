@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """The set of open videos, their on-disk indexes, and the queue that builds them.
 
 Per video (library/<id>/):

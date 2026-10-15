@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 

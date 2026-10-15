@@ -3,6 +3,7 @@ name = "video-scrubber"
 version = "0.1.0"
 description = "Describe a moment and find it. Local AI transcription, key frames and search across your videos."
 authors = ["Adam Nolle"]
+license = "GPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77"
 

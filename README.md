@@ -38,14 +38,18 @@ If `whisper-cli` ([whisper.cpp](https://github.com/ggml-org/whisper.cpp)) is ins
 
 ## Models
 
-Pick models from the status pill in the top-right corner. Defaults are chosen for your hardware.
+Every model downloads from Hugging Face the first time it's needed, then runs offline. Open the status pill in the top-right corner to see them all, with quality and speed ratings, memory needed, download size and license.
 
-| Job | Models |
-|---|---|
-| Speech to text | Whisper large-v3 turbo, large-v3, medium, medium.en, small, base, tiny · Distil-Whisper large-v3.5, large-v3, small.en · Moonshine base, tiny |
-| Picture search | SigLIP base, SigLIP 2 base, SigLIP so400m · CLIP ViT-B/32, ViT-L/14 |
-| Frame descriptions | Built in: SmolVLM 256M, 500M, SmolVLM2 2.2B · Ollama: Qwen2.5-VL 3B/7B, Qwen3-VL 4B/8B, Gemma 3 4B, MiniCPM-V 8B, Llama 3.2 Vision 11B, LLaVA 7B, Granite 3.2 Vision 2B, Moondream 2 |
-| Meaning search | BGE small/base en v1.5, MiniLM L6 v2, Multilingual E5 small, BGE-M3, Nomic Embed v1.5, mxbai embed large |
+**Recommendations.** On first launch, and whenever you press *Use recommended*, Video Scrubber reads this machine's GPU memory (or unified memory on Apple Silicon, or RAM), sets aside a share of it for models, and picks the highest-quality combination of speech, description, picture and text models that fits in memory at the same time. It looks at every combination, favouring quality first and speed second, and accounts for the runtime each model will use here: a 4-bit MLX build on Apple Silicon needs much less memory than the same model in fp16 on PyTorch. English-only models are only suggested when the spoken language is set to English. Downloads check free disk space first.
+
+| Job | Hugging Face models | Runs on |
+|---|---|---|
+| Speech to text | Whisper large-v3 turbo, large-v3, medium, medium.en, small, base, tiny · Distil-Whisper large-v3.5, large-v3, small.en · Moonshine base, tiny | MLX, faster-whisper, whisper.cpp, PyTorch |
+| Frame descriptions | Qwen3-VL 8B / 4B / 2B · Qwen2.5-VL 7B · InternVL3 8B / 2B / 1B · SmolVLM2 2.2B · SmolVLM 500M / 256M | MLX 4-bit, PyTorch |
+| Picture search | SigLIP so400m, SigLIP 2 base, SigLIP base · CLIP ViT-L/14, ViT-B/32 | PyTorch |
+| Meaning search | BGE-M3, mxbai embed large, BGE base/small en v1.5, Nomic Embed v1.5, Multilingual E5 small, MiniLM L6 v2 | PyTorch |
+
+Quality and speed are curated relative rankings within each job, not benchmark scores. Gated models (ones that need a Hugging Face account) aren't included. If [Ollama](https://ollama.com) is running, Gemma 3, MiniCPM-V, Llama 3.2 Vision, LLaVA and Moondream show up as extra frame describers.
 
 ## Develop
 
@@ -83,3 +87,9 @@ GitHub Actions builds macOS (Apple Silicon), Windows and Linux installers on eve
 | `⌘K` / `Ctrl K`, `/` | Find |
 | `⌘O` / `Ctrl O` | Open videos |
 | `Esc` | Clear range |
+
+## License
+
+Video Scrubber is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but without any warranty; see [LICENSE](LICENSE) for details.
+
+Model weights are not part of this repository. Each is downloaded from Hugging Face under its own license (MIT, Apache-2.0, or the Qwen license for InternVL3), shown in the app on every model card.

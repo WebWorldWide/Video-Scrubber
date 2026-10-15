@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Desktop shell bridge (Tauri). Outside Tauri — plain `vite` in a browser for UI work — it falls
 // back to an engine URL passed as ?engine=http://127.0.0.1:PORT&token=…
 import { invoke } from '@tauri-apps/api/core';

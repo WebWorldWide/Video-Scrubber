@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Client for the local engine (engine/vscrubber/server.py).
 
 export type EngineState = {
@@ -39,17 +40,27 @@ export type Result = { videoId: string; videoName: string; t: number; e: number;
 export type ModelRow = {
   id: string;
   label: string;
-  size: number;
   note: string;
-  langs?: string | null;
-  via: 'ollama' | 'builtin' | null;
-  engines?: string[];
-  engine?: string | null;
+  params: number | null;
+  quality: number | null;
+  speed: number | null;
+  license: string | null;
+  englishOnly: boolean;
+  via: 'huggingface' | 'ollama' | 'none';
+  repo: string | null;
+  engine: string | null;
+  engines: string[] | null;
+  onGpu: boolean | null;
+  memory: number;
+  download: number | null;
+  fits: boolean;
+  recommended: boolean;
   available: boolean;
   installed: boolean;
 };
 export type ModelKind = 'speech' | 'vision' | 'caption' | 'text';
-export type Models = { models: Record<ModelKind, ModelRow[]>; selected: Record<ModelKind, string>; ollama: boolean; pulls: Record<string, { pct: number }> };
+export type Memory = { ram: number; gpuMem: number | null; unified: boolean; budget: number; device: 'gpu' | 'cpu'; used: number };
+export type Models = { models: Record<ModelKind, ModelRow[]>; selected: Record<ModelKind, string>; recommended: Record<ModelKind, string>; ollama: boolean; pulls: Record<string, { pct: number }>; memory: Memory; diskFree: number };
 
 export type Settings = Record<ModelKind, string> & { speechEngine: string; language: string; parallel: number; saveDir: string };
 
@@ -101,6 +112,7 @@ export const api = {
   saveSettings: (p: Partial<Settings>) => req<Settings>('PATCH', '/settings', p),
   models: () => req<Models>('GET', '/models'),
   pull: (kind: ModelKind, id: string) => req('POST', '/models/pull', { kind, id }),
+  useRecommended: () => req<Settings>('POST', '/models/recommended'),
   library: () => req<Video[]>('GET', '/library'),
   add: (paths: string[]) => req<{ added: Video[]; errors: { path: string; error: string }[] }>('POST', '/library', { paths }),
   remove: (id: string) => req('DELETE', `/library/${id}`),

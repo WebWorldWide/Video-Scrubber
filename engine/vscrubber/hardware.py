@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Detects what this machine can accelerate: torch device, MLX, CTranslate2 CUDA,
 whisper.cpp, Ollama, and ffmpeg hardware decoders/encoders."""
 
@@ -92,6 +93,55 @@ def ct2_cuda() -> bool:
 @functools.lru_cache(None)
 def mlx_ok() -> bool:
     return IS_APPLE_SILICON and has_module("mlx_whisper")
+
+
+@functools.lru_cache(None)
+def mlx_vlm_ok() -> bool:
+    return IS_APPLE_SILICON and has_module("mlx_vlm")
+
+
+GB = 1024**3
+
+
+@functools.lru_cache(None)
+def memory() -> dict:
+    """RAM, GPU memory, and how much of it the app's models may use at once.
+
+    Apple Silicon shares memory between CPU and GPU; leave room for macOS, the player and the
+    video being decoded. Discrete GPUs get most of their VRAM. Without a GPU, models run from RAM."""
+    import psutil
+
+    ram = psutil.virtual_memory().total
+    acc = torch_accel()
+    gpu_mem, unified = None, False
+    if IS_APPLE_SILICON:
+        unified, gpu_mem = True, ram
+        budget = ram * 0.6 - 2 * GB
+    elif acc["device"] in ("cuda", "xpu"):
+        try:
+            import torch
+
+            mod = torch.cuda if acc["device"] == "cuda" else torch.xpu
+            gpu_mem = mod.get_device_properties(0).total_memory
+        except Exception:
+            gpu_mem = None
+        budget = (gpu_mem * 0.85 - 0.5 * GB) if gpu_mem else ram * 0.3
+    elif acc["device"] == "directml":
+        # DirectML doesn't report VRAM; assume a mid-range card or shared memory.
+        budget = min(ram * 0.3, 6 * GB)
+    else:
+        budget = ram * 0.4 - 1 * GB
+    return {"ram": ram, "gpuMem": gpu_mem, "unified": unified, "budget": int(max(1.5 * GB, budget)),
+            "device": "gpu" if acc["device"] != "cpu" or IS_APPLE_SILICON else "cpu"}
+
+
+def disk_free() -> int:
+    from huggingface_hub.constants import HF_HUB_CACHE
+
+    p = HF_HUB_CACHE
+    while p and not os.path.exists(p):
+        p = os.path.dirname(p)
+    return shutil.disk_usage(p or os.path.expanduser("~")).free
 
 
 @functools.lru_cache(None)
@@ -207,6 +257,9 @@ def summary() -> dict:
         "whisperCpp": whisper_cpp_bin(),
         "ollama": oll is not None,
         "ollamaModels": oll or [],
+        "mlxVlm": mlx_vlm_ok(),
+        "memory": memory(),
+        "diskFree": disk_free(),
         "ffmpegHwaccels": ff["hwaccels"],
         "videoEncoder": ff["encoder"],
         "label": f"{acc['name'] if acc['backend'] != 'CPU' else cpu_name()} · {acc['backend'] if acc['backend'] != 'CPU' else speech_accel}",

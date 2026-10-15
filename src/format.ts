@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 export const pad = (n: number) => String(n).padStart(2, '0');
 
 export const fmt = (t: number) => {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //! Builds the Python environment for the local engine, choosing the PyTorch build
 //! that accelerates on this machine (Metal, CUDA, ROCm, Intel XPU, DirectML or CPU).
 
@@ -176,7 +177,8 @@ pub fn setup(engine_dir: &Path, venv: &Path, resource_bin: Option<&Path>, log: &
         run(&uv, &[v(&["venv", "--allow-existing", "--python", "3.12"]), vec![s(venv)]].concat(), log)?;
         if let Some(idx) = &accel.torch_index {
             step(&format!("Installing PyTorch for {}", accel.label), 0.2);
-            run(&uv, &[v(&["pip", "install", "--python"]), vec![s(&py)], v(&["torch", "--index-url"]), vec![idx.clone()]].concat(), log)?;
+            // torchvision must come from the same index so its ops match this torch build.
+            run(&uv, &[v(&["pip", "install", "--python"]), vec![s(&py)], v(&["torch", "torchvision", "--index-url"]), vec![idx.clone()]].concat(), log)?;
         }
         step("Installing speech, vision and search runtimes", 0.5);
         let mut args = [v(&["pip", "install", "--python"]), vec![s(&py), "-r".into(), s(&pyproject)]].concat();
@@ -191,7 +193,7 @@ pub fn setup(engine_dir: &Path, venv: &Path, resource_bin: Option<&Path>, log: &
         run(&py, &v(&["-m", "pip", "install", "--upgrade", "pip"]), log)?;
         if let Some(idx) = &accel.torch_index {
             step(&format!("Installing PyTorch for {}", accel.label), 0.2);
-            run(&py, &[v(&["-m", "pip", "install", "torch", "--index-url"]), vec![idx.clone()]].concat(), log)?;
+            run(&py, &[v(&["-m", "pip", "install", "torch", "torchvision", "--index-url"]), vec![idx.clone()]].concat(), log)?;
         }
         step("Installing speech, vision and search runtimes", 0.5);
         run(&py, &[v(&["-m", "pip", "install"]), read_deps(&pyproject, &accel.extras)].concat(), log)?;

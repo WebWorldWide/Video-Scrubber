@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import type { Video } from '../api';
 import { grad, hueOf } from '../format';
 import { IconPlus, IconX } from '../icons';

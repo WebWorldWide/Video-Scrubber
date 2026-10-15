@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 import asyncio
 import json
 import mimetypes
@@ -29,6 +30,7 @@ async def lifespan(app):
     # Probe hardware and warm the search models off the request path, so the first search is quick.
     asyncio.get_running_loop().run_in_executor(None, hardware.summary)
     asyncio.get_running_loop().run_in_executor(None, _warm)
+    asyncio.get_running_loop().run_in_executor(None, _prefetch_sizes)
     # The desktop shell waits for this line to learn the port.
     print(f"VSCRUBBER_READY port={os.environ.get('VS_PORT', '')}", flush=True)
     yield
@@ -93,29 +95,54 @@ def patch_settings(patch: dict):
         raise HTTPException(400, str(e))
 
 
+def _model_row(kind: str, m: dict, s: dict, tags: list[str] | None, budget: int, rec: dict) -> dict:
+    engine = catalog.engine_for(kind, m, s["speechEngine"] if kind == "speech" else "auto")
+    mem = catalog.memory_needed(kind, m, engine)
+    repo = catalog.repo_for(kind, m, engine) if engine else None
+    return {
+        "id": m["id"], "label": m["label"], "note": m.get("note", ""), "params": m.get("params"),
+        "quality": m.get("quality"), "speed": catalog.effective_speed(m, engine) if engine and m.get("speed") else m.get("speed"),
+        "license": m.get("license"), "englishOnly": bool(m.get("english")),
+        "via": "ollama" if m.get("ollama") else ("none" if m["id"] == "none" else "huggingface"),
+        "repo": repo[0] if isinstance(repo, tuple) else repo,
+        "engine": engine, "engines": [e for e in catalog.SPEECH_ENGINES if e in m] if kind == "speech" else None,
+        "onGpu": catalog.on_gpu(engine) if engine and engine not in ("none", "ollama") else None,
+        "memory": mem, "download": models.download_size(kind, m["id"], network=False) if engine not in (None, "ollama") else None,
+        "fits": mem <= budget, "recommended": rec.get(kind) == m["id"],
+        "available": engine is not None and not (engine == "ollama" and tags is None),
+        "installed": models.is_installed(kind, m["id"], tags or []) if engine else False,
+    }
+
+
 @app.get("/models")
 def get_models():
     tags = hardware.ollama_models()
     s = settings.load()
-    out = {}
+    mem = hardware.memory()
+    rec = catalog.recommend(s["language"])
+    out = {kind: [_model_row(kind, m, s, tags, mem["budget"], rec) for m in items] for kind, items in catalog.KINDS.items()}
+    used = sum(catalog.memory_needed(k, catalog.get(k, s[k]), catalog.engine_for(k, catalog.get(k, s[k]))) for k in catalog.KINDS)
+    return {"models": out, "selected": {k: s[k] for k in catalog.KINDS}, "recommended": rec, "ollama": tags is not None,
+            "pulls": models.pull_state(), "memory": {**mem, "used": used}, "diskFree": hardware.disk_free()}
+
+
+@app.post("/models/recommended")
+def use_recommended():
+    """Switch to the recommended set for this machine and download whatever is missing."""
+    s = settings.load()
+    rec = catalog.recommend(s["language"])
+    s = settings.update(rec)
+    for kind, mid in rec.items():
+        if not models.is_installed(kind, mid):
+            models.pull(kind, mid)
+    return s
+
+
+def _prefetch_sizes():
+    """Fill the Hugging Face file-size cache so the models dialog shows real download sizes."""
     for kind, items in catalog.KINDS.items():
-        rows = []
         for m in items:
-            row = {k: m[k] for k in ("id", "label", "size", "note") if k in m}
-            row["langs"] = m.get("langs")
-            row["via"] = "ollama" if m.get("ollama") else ("builtin" if m.get("repo") or kind == "speech" else None)
-            if kind == "speech":
-                row["engines"] = [e for e in catalog.SPEECH_ENGINES if e in m]
-                try:
-                    row["engine"] = catalog.speech_engine_for(m, s["speechEngine"])
-                except RuntimeError:
-                    row["engine"] = None
-            row["available"] = not (row["via"] == "ollama" and tags is None) and (kind != "speech" or row["engine"] is not None)
-            row["installed"] = models.is_installed(kind, m["id"], tags or [])
-            rows.append(row)
-        out[kind] = rows
-    return {"models": out, "selected": {k: s[k] for k in catalog.KINDS}, "ollama": tags is not None,
-            "pulls": models.pull_state()}
+            models.download_size(kind, m["id"])
 
 
 class PullReq(BaseModel):

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """ffmpeg wrappers: probing, audio extraction, scene detection, key frames, clips and proxies."""
 
 import functools

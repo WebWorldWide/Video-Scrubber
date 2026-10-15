@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tiny pub/sub bus: worker threads publish, SSE clients on the asyncio loop consume."""
 
 import asyncio
