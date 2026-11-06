@@ -4,7 +4,7 @@
 
 Describe a moment and find it. Video Scrubber transcribes your videos, pulls a key frame at every scene change, and lets you search what's said and what's on screen across one video or many at once. Everything runs on your machine with local AI models, accelerated by whatever GPU you have.
 
-- **Find**: type "Jonah demos the app on his phone" or "the pricing whiteboard". Results combine speech (meaning plus keywords), picture search on the key frames, and frame descriptions. Nearby hits merge into one moment.
+- **Find**: type "Jonah demos the app on his phone" or "the pricing whiteboard". Results combine speech (meaning plus keywords, timed to the word), picture search on the key frames and on a sample every couple of seconds in between, and frame descriptions. Nearby hits merge into one moment.
 - **Transcript**: timestamped speech with `.txt` and `.srt` export.
 - **Transcribe + Show**: the transcript grouped under the key frame that was on screen, with a one-line description of each frame.
 - **Comb many videos**: open or drop as many videos as you like. They index in parallel, and Find can search *this video* or *all videos*.
@@ -73,6 +73,14 @@ The engine also runs on its own, which is handy for scripting:
 cd engine && .venv/bin/python -m vscrubber --port 8765
 curl -X POST localhost:8765/library -H 'content-type: application/json' -d '{"paths":["/path/to/video.mp4"]}'
 curl -X POST localhost:8765/search  -H 'content-type: application/json' -d '{"q":"the pricing whiteboard"}'
+```
+
+Engine tests use fake models, so they run in a few seconds with no downloads (they need ffmpeg):
+
+```sh
+cd engine
+uv pip install --python .venv/bin/python pytest httpx   # once
+.venv/bin/python -m pytest tests
 ```
 
 ## Build

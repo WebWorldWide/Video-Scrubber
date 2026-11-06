@@ -275,9 +275,9 @@ def video_media(vid: str, request: Request, proxy: int = 0):
 @app.get("/videos/{vid}/frames/{name}")
 def frame(vid: str, name: str):
     _video(vid)
-    if not re.fullmatch(r"\d{4}\.jpg", name):
+    if not re.fullmatch(r"d?\d{4,5}\.jpg", name):
         raise HTTPException(400, "bad frame name")
-    p = lib.dir(vid) / "frames" / name
+    p = lib.dir(vid) / ("dense" if name.startswith("d") else "frames") / name
     if not p.exists():
         raise HTTPException(404, "no frame")
     return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})

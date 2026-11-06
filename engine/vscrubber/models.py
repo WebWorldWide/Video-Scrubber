@@ -402,7 +402,7 @@ class Speech:
     def transcribe(self, wav: str, duration: float, language: str | None, cb: Progress) -> list[dict]:
         lang = None if language in (None, "", "auto") else language
         segs = getattr(self, "_" + self.engine.replace(".", "_").replace("-", "_"))(wav, duration, lang, cb)
-        return _clean(segs)
+        return _clean([part for seg in segs for part in _split(seg)])
 
     def _mlx(self, wav, duration, lang, cb):
         import mlx_whisper
@@ -426,26 +426,34 @@ class Speech:
         orig = T.tqdm
         T.tqdm = types.SimpleNamespace(tqdm=Bar)
         try:
-            res = mlx_whisper.transcribe(wav, path_or_hf_repo=self.target, verbose=False, language=lang,
-                                         condition_on_previous_text=False)
+            # Word timestamps pin each line to when it's actually said, and let Whisper skip the
+            # silences it would otherwise fill with "Thank you." style hallucinations.
+            res = mlx_whisper.transcribe(load_wav(wav), path_or_hf_repo=self.target, verbose=False, language=lang,
+                                         condition_on_previous_text=False, word_timestamps=True,
+                                         hallucination_silence_threshold=2.0)
         finally:
             T.tqdm = orig
         return [{"t": s["start"], "e": s["end"], "x": s["text"], "nsp": s.get("no_speech_prob", 0),
-                 "lp": s.get("avg_logprob", 0)} for s in res["segments"]]
+                 "lp": s.get("avg_logprob", 0), "w": [(w["start"], w["word"]) for w in s.get("words") or []]}
+                for s in res["segments"]]
 
     def _faster_whisper(self, wav, duration, lang, cb):
-        from faster_whisper import WhisperModel
+        from faster_whisper import BatchedInferencePipeline, WhisperModel
 
+        cuda = hw.ct2_cuda()
         if self.model is None:
-            cuda = hw.ct2_cuda()
             self.model = WhisperModel(self.target, device="cuda" if cuda else "cpu",
                                       compute_type="float16" if cuda else "int8", cpu_threads=os.cpu_count() or 4)
+            # Batched decoding over VAD-split chunks: several times faster on CUDA, faster on CPU too.
+            self.batched = BatchedInferencePipeline(model=self.model)
         # Hand over decoded samples: faster-whisper's own PyAV loader breaks on PyAV 15+ (metadata_errors).
-        segs, _ = self.model.transcribe(load_wav(wav), language=lang, vad_filter=True, beam_size=5 if hw.ct2_cuda() else 1,
-                                        condition_on_previous_text=False)
+        segs, _ = self.batched.transcribe(load_wav(wav), language=lang, batch_size=16 if cuda else 8,
+                                          beam_size=5 if cuda else 1, word_timestamps=True,
+                                          condition_on_previous_text=False)
         out = []
         for s in segs:
-            out.append({"t": s.start, "e": s.end, "x": s.text, "nsp": s.no_speech_prob, "lp": s.avg_logprob})
+            out.append({"t": s.start, "e": s.end, "x": s.text, "nsp": s.no_speech_prob, "lp": s.avg_logprob,
+                        "w": [(w.start, w.word) for w in s.words or []]})
             cb(min(1.0, s.end / max(duration, 1)))
         return out
 
@@ -500,17 +508,49 @@ class Speech:
         return out
 
 
+# What Whisper says over silence, music and room tone. Only dropped when the segment also looks unsure.
+HALLUCINATION = re.compile(
+    r"^(?:thank you(?: (?:so|very) much)?(?: for watching)?|thanks(?: for watching)?|please subscribe.*|"
+    r"(?:like and )?subscribe.*|subtitles? by.*|.*amara\.org.*|transcribed by.*|you|bye|okay|so|\W*)[.!?]*$", re.I)
+REPEAT = re.compile(r"(\b.{4,}?\b[.!?,]?)(?:\s+\1){2,}", re.I)
+
+
+def _split(seg: dict, soft: float = 8.0, hard: float = 14.0) -> list[dict]:
+    """Break a long segment into sentence-sized lines using its word timings, so a hit lands on the
+    sentence that matched. Batched decoding returns one segment per ~30 s of speech."""
+    words = seg.get("w") or []
+    if seg["e"] - seg["t"] <= hard or len(words) < 2:
+        return [seg]
+    out, cur = [], []
+    for k, (t, w) in enumerate(words):
+        cur.append((t, w))
+        nxt = words[k + 1][0] if k + 1 < len(words) else seg["e"]
+        span = nxt - cur[0][0]
+        end = w.rstrip()[-1:] in ".?!" and span >= 1.5
+        if end or (span >= soft and w.rstrip()[-1:] in ",;:") or span >= hard or k + 1 == len(words):
+            out.append({**seg, "t": cur[0][0], "e": nxt, "x": "".join(x for _, x in cur), "w": cur})
+            cur = []
+    return out
+
+
 def _clean(segs: list[dict]) -> list[dict]:
-    """Drop silence hallucinations and immediate repeats."""
+    """Drop silence hallucinations and immediate repeats, and collapse looping text."""
     out = []
     for s in segs:
         x = re.sub(r"\s+", " ", s["x"]).strip()
-        if not x or (s.get("nsp", 0) > 0.6 and s.get("lp", 0) < -1.0):
+        x = REPEAT.sub(r"\1", x)
+        nsp, lp = s.get("nsp", 0), s.get("lp", 0)
+        if not x or (nsp > 0.6 and lp < -1.0):
             continue
+        if HALLUCINATION.match(x) and (nsp > 0.2 or lp < -0.7 or s["e"] - s["t"] > 6):
+            continue
+        words = [(round(float(t), 2), w.strip()) for t, w in s.get("w") or [] if w.strip()]
         if out and out[-1]["x"] == x:
             out[-1]["e"] = s["e"]
             continue
-        out.append({"t": round(float(s["t"]), 2), "e": round(float(max(s["e"], s["t"] + 0.3)), 2), "x": x})
+        # A line starts when its first word does; Whisper's segment start can lead it by a second or more.
+        t = words[0][0] if words and abs(words[0][0] - s["t"]) < 5 else s["t"]
+        out.append({"t": round(float(t), 2), "e": round(float(max(s["e"], t + 0.3)), 2), "x": x, "w": words})
     return out
 
 
@@ -538,34 +578,59 @@ class Vision:
         x = getattr(x, "pooler_output", x).float()
         return (x / x.norm(dim=-1, keepdim=True)).cpu().numpy()
 
-    def embed_images(self, paths: list[str], cb: Progress | None = None, batch: int = 16) -> np.ndarray:
+    def embed_images(self, paths: list[str], cb: Progress | None = None, batch: int = 16,
+                     lock=None) -> np.ndarray:
+        """Embed images in batches. JPEG decoding and preprocessing for the next batch overlap the
+        model run on this one; with `lock`, it's held per batch so searches can run in between."""
+        from concurrent.futures import ThreadPoolExecutor
+        from contextlib import nullcontext
+
         from PIL import Image
 
+        def prep(chunk):
+            imgs = []
+            for p in chunk:
+                with Image.open(p) as im:
+                    imgs.append(im.convert("RGB"))
+            return self.proc(images=imgs, return_tensors="pt")
+
+        chunks = [paths[i:i + batch] for i in range(0, len(paths), batch)]
         out = []
-        for i in range(0, len(paths), batch):
-            imgs = [Image.open(p).convert("RGB") for p in paths[i:i + batch]]
-            inputs = self.proc(images=imgs, return_tensors="pt").to(self.device)
-            inputs["pixel_values"] = inputs["pixel_values"].to(self.dtype)
-            with self.torch.inference_mode():
-                out.append(self._norm(self.model.get_image_features(**inputs)))
-            if cb:
-                cb(min(1.0, (i + batch) / len(paths)))
+        with ThreadPoolExecutor(1) as ex:
+            nxt = ex.submit(prep, chunks[0]) if chunks else None
+            for k in range(len(chunks)):
+                inputs = nxt.result()
+                if k + 1 < len(chunks):
+                    nxt = ex.submit(prep, chunks[k + 1])
+                with lock or nullcontext():
+                    inputs = inputs.to(self.device)
+                    inputs["pixel_values"] = inputs["pixel_values"].to(self.dtype)
+                    with self.torch.inference_mode():
+                        out.append(self._norm(self.model.get_image_features(**inputs)))
+                if cb:
+                    cb(min(1.0, (k + 1) * batch / len(paths)))
         return np.concatenate(out) if out else np.zeros((0, 1), np.float32)
+
+    # Averaging a few phrasings of the query is a cheap, well-known zero-shot accuracy gain for CLIP/SigLIP.
+    TEMPLATES = ("{}", "a photo of {}.", "a video frame showing {}.")
 
     def embed_text(self, text: str) -> np.ndarray:
         kw = {"padding": "max_length", "max_length": 64} if self.sigmoid else {"padding": True}
-        inputs = self.proc(text=[text], return_tensors="pt", truncation=True, **kw).to(self.device)
+        texts = [t.format(text) for t in self.TEMPLATES]
+        inputs = self.proc(text=texts, return_tensors="pt", truncation=True, **kw).to(self.device)
         with self.torch.inference_mode():
-            return self._norm(self.model.get_text_features(**inputs))[0]
+            e = self._norm(self.model.get_text_features(**inputs)).mean(axis=0)
+        return e / (np.linalg.norm(e) + 1e-8)
 
     def relevance(self, sims: np.ndarray) -> np.ndarray:
         """Map cosine similarity to a 0–1 relevance the search can compare with text scores."""
+        # Not capped at 1: strong matches must keep their order. Search caps the displayed confidence.
         if self.sigmoid:
             # Matching frames land around -3…+6, unrelated ones below -8.
             logits = sims * self.scale + self.bias
-            return np.clip((logits + 10.0) / 10.0, 0, 1)
+            return np.maximum((logits + 10.0) / 10.0, 0)
         lo, hi = self.meta["calib"]
-        return np.clip((sims - lo) / (hi - lo), 0, 1)
+        return np.maximum((sims - lo) / (hi - lo), 0)
 
 
 # ---------------------------------------------------------------- frame descriptions
@@ -647,12 +712,19 @@ class TextEmbedder:
         self.model = SentenceTransformer(self.meta["transformers"], device=dev if dev != "directml" else "cpu",
                                          trust_remote_code=self.meta.get("remote_code", False))
 
-    def docs(self, texts: list[str]) -> np.ndarray:
+    def docs(self, texts: list[str], lock=None) -> np.ndarray:
+        """Embed documents; with `lock`, held per chunk so searches aren't stuck behind a long video."""
+        from contextlib import nullcontext
+
         if not texts:
             return np.zeros((0, 1), np.float32)
         pre = self.meta.get("d", "")
-        return self.model.encode([pre + t for t in texts], normalize_embeddings=True, batch_size=32,
-                                 convert_to_numpy=True).astype(np.float32)
+        out = []
+        for i in range(0, len(texts), 256):
+            with lock or nullcontext():
+                out.append(self.model.encode([pre + t for t in texts[i:i + 256]], normalize_embeddings=True,
+                                             batch_size=32, convert_to_numpy=True).astype(np.float32))
+        return np.concatenate(out)
 
     def query(self, text: str) -> np.ndarray:
         return self.model.encode([self.meta.get("q", "") + text], normalize_embeddings=True, convert_to_numpy=True)[0]
@@ -660,8 +732,9 @@ class TextEmbedder:
     def relevance(self, sims: np.ndarray) -> np.ndarray:
         """Absolute similarity, blended with how far a line stands out from the rest of this video."""
         lo, hi = self.meta["calib"]
-        rel = np.clip((sims - lo) / (hi - lo), 0, 1)
+        # Not capped at 1: lines past the top of the calibration range must keep their order.
+        rel = np.maximum((sims - lo) / (hi - lo), 0)
         if len(sims) >= 4:
             lift = np.clip((sims - np.median(sims)) / ((hi - lo) * 0.75), 0, 1)
-            rel = np.clip(rel * (0.8 + 0.4 * lift), 0, 1)
+            rel = rel * (0.8 + 0.4 * lift)
         return rel

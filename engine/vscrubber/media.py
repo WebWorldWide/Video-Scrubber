@@ -104,41 +104,126 @@ def extract_audio(path: str, out: Path, duration: float, cb: Progress | None = N
                    "-ar", "16000", "-c:a", "pcm_s16le", str(out)], duration, cb, cancel)
 
 
-def scan_scenes(path: str, duration: float, cb: Progress | None = None, cancel=None,
-                fps: float = 2.0, min_len: float = 2.0, max_gap: float | None = None) -> list[float]:
-    """Return scene start times. Decodes a tiny 64×36 stream (hardware-decoded when possible),
-    scores each frame against the previous one, and cuts where the change spikes."""
+DENSE_MAX = 1800  # most picture-search samples per video
+DENSE_W = 384  # SigLIP so400m's input size; smaller models downscale
+
+
+def dense_fps(duration: float) -> float:
+    """Picture-search sampling rate: every 2 s, sparser for long videos."""
+    return min(0.5, DENSE_MAX / max(duration, 1.0))
+
+
+def scan_video(path: str, duration: float, cb: Progress | None = None, cancel=None, dense_dir: Path | None = None,
+               fps: float = 2.0, min_len: float = 2.0, max_gap: float | None = None) -> tuple[list[float], list[dict]]:
+    """One decode pass that finds scene cuts and, with `dense_dir`,
+    saves small frames every couple of seconds for picture search.
+
+    Returns (scene start times, [{t, f}] dense samples). Dense samples that look the same as the
+    previous kept one are dropped, so static stretches cost one picture embedding instead of dozens."""
     W, H = 64, 36
     max_gap = max_gap or max(30.0, duration / 150)
-    vf = f"fps={fps},scale={W}:{H}:flags=area,format=rgb24"
+    dfps = dense_fps(duration)
     frames = None
-    for hw in (["-hwaccel", "auto"], []):
+    # Multi-threaded software decode first: ffmpeg's hwaccel decoders work a frame at a time, which
+    # measured 2-11x slower for this full-pass scan (1080p H.264 and 4K HEVC on Apple Silicon).
+    for hw in ([], ["-hwaccel", "auto"]):
+        if dense_dir:
+            shutil.rmtree(dense_dir, ignore_errors=True)
+            dense_dir.mkdir(parents=True)
         try:
-            frames = _read_frames(path, vf, W, H, duration * fps, cb, cancel, hw)
+            frames = _read_frames(path, _scan_outputs(W, H, fps, dfps, dense_dir), W, H, duration * fps, cb, cancel, hw)
             break
         except Cancelled:
             raise
         except RuntimeError:
             continue
     if frames is None or len(frames) < 2:
-        return [0.0]
-    a = frames.astype(np.float32) / 255.0
-    pix = np.abs(a[1:] - a[:-1]).mean(axis=(1, 2, 3))
-    hists = np.stack([np.concatenate([np.histogram(f[..., c], bins=16, range=(0, 1))[0] for c in range(3)]) for f in a]).astype(np.float32)
-    hists /= hists.sum(axis=1, keepdims=True)
-    hd = np.abs(hists[1:] - hists[:-1]).sum(axis=1) / 2
-    score = 0.5 * np.minimum(1, pix * 3) + 0.5 * hd
+        return [0.0], _keep_dense(dense_dir, dfps, frames, fps)
+    cuts = _cuts(frames, fps, duration, min_len)
+    dense = _keep_dense(dense_dir, dfps, frames, fps)
+    return _fill(cuts, duration, max_gap, min_len), dense
+
+
+def _scan_outputs(W: int, H: int, fps: float, dfps: float, dense_dir: Path | None) -> list[str]:
+    tiny = f"fps={fps},scale={W}:{H}:flags=area,format=rgb24"
+    if not dense_dir:
+        return ["-vf", tiny, "-an", "-f", "rawvideo", "-"]
+    big = (f"fps={dfps},scale={DENSE_W}:{DENSE_W}:force_original_aspect_ratio=decrease:"
+           "force_divisible_by=2:flags=bilinear")
+    return ["-filter_complex", f"[0:V:0]split=2[a][b];[a]{tiny}[s];[b]{big}[d]",
+            "-map", "[s]", "-an", "-f", "rawvideo", "-",
+            "-map", "[d]", "-an", "-q:v", "4", "-start_number", "0", str(dense_dir / "d%05d.jpg")]
+
+
+def _change_scores(frames: np.ndarray) -> np.ndarray:
+    """How much each tiny frame changed from the previous one, 0–1 (pixels and colour histograms).
+    Works in uint8/int16 chunks, so a two-hour video stays around 100 MB instead of 1 GB+."""
+    n = len(frames)
+    pix = np.empty(n - 1, np.float32)
+    hd = np.empty(n - 1, np.float32)
+    off = np.arange(3, dtype=np.int64) * 16
+    prev_h = None
+    CH = 1024
+    for s in range(0, n, CH):
+        f = frames[s:s + CH]
+        # Pixel change against the previous frame (including the last frame of the previous chunk).
+        left = frames[max(0, s - 1):s + len(f) - 1] if s else f[:-1]
+        right = f if s else f[1:]
+        pix[max(0, s - 1):s + len(f) - 1] = np.abs(right.astype(np.int16) - left).mean(axis=(1, 2, 3)) / 255.0
+        # 16-bin colour histograms per channel, built with one bincount for the whole chunk.
+        k = len(f)
+        idx = ((f >> 4).reshape(k, -1, 3).astype(np.int64) + off) + (np.arange(k, dtype=np.int64) * 48)[:, None, None]
+        h = np.bincount(idx.ravel(), minlength=k * 48).reshape(k, 48).astype(np.float32)
+        h /= h[:, :16].sum(axis=1, keepdims=True)  # every channel has the same pixel count
+        both = h if prev_h is None else np.concatenate([prev_h, h])
+        d = np.abs(both[1:] - both[:-1]).sum(axis=1) / 6  # /2 per channel-normalised histogram, /3 channels
+        hd[max(0, s - 1):s + k - 1] = d
+        prev_h = h[-1:]
+    return 0.5 * np.minimum(1, pix * 3) + 0.5 * hd
+
+
+def _cuts(frames: np.ndarray, fps: float, duration: float, min_len: float) -> list[float]:
+    """Cut where the change from the previous frame spikes."""
+    score = _change_scores(frames)
     # A cut has to spike above its neighbourhood, so constant motion (pans, zooms) doesn't read as cuts
-    # while a hard cut out of a still shot does.
+    # while a hard cut out of a still shot does. Neighbourhood: 6 either side, excluding itself.
+    m = len(score)
+    pad = np.concatenate([np.full(6, np.nan, np.float32), score, np.full(6, np.nan, np.float32)])
+    win = np.lib.stride_tricks.sliding_window_view(pad, 13).copy()
+    win[:, 6] = np.nan
+    with np.errstate(all="ignore"):
+        base = np.nan_to_num(np.nanmedian(win, axis=1)) if m > 1 else np.zeros(m, np.float32)
+    thresh = np.maximum(0.2, base * 2.5 + 0.08)
     cuts = [0.0]
-    n = len(score)
-    for i, s in enumerate(score):
-        lo, hi = max(0, i - 6), min(n, i + 7)
-        neigh = np.delete(score[lo:hi], i - lo)
-        base = float(np.median(neigh)) if len(neigh) else 0.0
-        t = (i + 1) / fps
-        if s > max(0.2, base * 2.5 + 0.08) and t - cuts[-1] >= min_len and duration - t >= 1.0:
+    for i in np.nonzero(score > thresh)[0]:
+        t = (int(i) + 1) / fps
+        if t - cuts[-1] >= min_len and duration - t >= 1.0:
             cuts.append(t)
+    return cuts
+
+
+def _keep_dense(dense_dir: Path | None, dfps: float, frames: np.ndarray | None, fps: float,
+                same: float = 0.02) -> list[dict]:
+    """Keep dense samples that differ from the last kept one; delete the rest."""
+    if not dense_dir or not dense_dir.exists():
+        return []
+    files = sorted(dense_dir.glob("d*.jpg"))
+    out, last = [], None
+    for p in files:
+        k = int(p.stem[1:])
+        t = k / dfps
+        tiny = None
+        if frames is not None and len(frames):
+            tiny = frames[min(len(frames) - 1, int(round(t * fps)))].astype(np.int16)
+        if last is not None and tiny is not None and np.abs(tiny - last).mean() / 255.0 < same:
+            p.unlink(missing_ok=True)
+            continue
+        last = tiny
+        out.append({"t": round(t, 3), "f": p.name})
+    return out
+
+
+def _fill(cuts: list[float], duration: float, max_gap: float, min_len: float) -> list[float]:
     # Long static stretches still get a key frame every `max_gap` seconds.
     filled = []
     bounds = cuts + [duration]
@@ -155,8 +240,8 @@ def scan_scenes(path: str, duration: float, cb: Progress | None = None, cancel=N
     return [round(t, 3) for t in filled]
 
 
-def _read_frames(path, vf, W, H, expected, cb, cancel, hw) -> np.ndarray:
-    args = [ffmpeg(), "-nostdin", "-hide_banner", "-loglevel", "error", *hw, "-i", path, "-vf", vf, "-an", "-f", "rawvideo", "-"]
+def _read_frames(path, outputs, W, H, expected, cb, cancel, hw) -> np.ndarray:
+    args = [ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", *hw, "-i", path, *outputs]
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=NO_WINDOW)
     size = W * H * 3
     out = []
@@ -244,10 +329,26 @@ def save_frame(path: str, t: float, out: Path):
         raise RuntimeError("Couldn’t read this frame")
 
 
-def make_proxy(path: str, out: Path, duration: float, cb: Progress | None = None, cancel=None):
-    """H.264/AAC copy for formats the player can't decode (HEVC, ProRes, AVI, …); AAC alone for audio files."""
+def make_proxy(path: str, out: Path, duration: float, cb: Progress | None = None, cancel=None, probe: dict | None = None):
+    """H.264/AAC copy for formats the player can't decode (HEVC, ProRes, AVI, …); AAC alone for audio files.
+    When the video stream is already playable and only the container isn't (MKV, AVI, TS), the
+    picture is copied as-is: seconds instead of a full re-encode, and no quality loss."""
+    from .hardware import IS_MAC
+
     tmp = out.with_suffix(".part.mp4")
-    base = [ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-hwaccel", "auto", *_pre_args(), "-i", path,
+    vc, ac = (probe or {}).get("vcodec"), (probe or {}).get("acodec")
+    if vc == "h264" or (vc == "hevc" and IS_MAC):
+        audio = ["-c:a", "copy"] if ac in ("aac", "mp3", None) else ["-c:a", "aac", "-b:a", "160k"]
+        tag = ["-tag:v", "hvc1"] if vc == "hevc" else []
+        try:
+            _run_progress([ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-i", path, "-map", "0:V:0",
+                           "-map", "0:a:0?", "-c:v", "copy", *tag, *audio, "-movflags", "+faststart", str(tmp)],
+                          duration, cb, cancel)
+            tmp.replace(out)
+            return
+        except RuntimeError:
+            pass
+    base = [ffmpeg(), "-nostdin", "-y", "-hide_banner", "-loglevel", "error", *_pre_args(), "-i", path,
             "-map", "0:v:0?", "-map", "0:a:0?"]
     tail = ["-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(tmp)]
     try:
