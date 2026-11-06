@@ -54,6 +54,13 @@ jobs:
       - name: Check the Python engine compiles
         run: python -m compileall -q engine/vscrubber
 
+      # The tests use fake models, so they need neither torch nor any downloads. ffmpeg comes from
+      # imageio-ffmpeg when the runner doesn't have it.
+      - name: Test the Python engine
+        run: |
+          python -m pip install -q pytest numpy pillow fastapi httpx imageio-ffmpeg
+          python -m pytest -q engine/tests
+
       # The app uses uv to build the engine's Python environment on first launch,
       # so users don't need Python installed.
       - name: Bundle uv

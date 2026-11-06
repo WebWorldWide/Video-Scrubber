@@ -12,3 +12,5 @@ __pycache__/
 *.log
 .env
 .codex/
+*.egg-info/
+.pytest_cache/

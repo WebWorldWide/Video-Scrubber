@@ -75,6 +75,14 @@ curl -X POST localhost:8765/library -H 'content-type: application/json' -d '{"pa
 curl -X POST localhost:8765/search  -H 'content-type: application/json' -d '{"q":"the pricing whiteboard"}'
 ```
 
+Engine tests use fake models, so they run in a few seconds with no downloads (they need ffmpeg):
+
+```sh
+cd engine
+uv pip install --python .venv/bin/python pytest httpx   # once
+.venv/bin/python -m pytest tests
+```
+
 ## Build
 
 ```sh
