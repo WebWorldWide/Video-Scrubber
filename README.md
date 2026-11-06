@@ -1,6 +1,6 @@
 # Video Scrubber
 
-<img src="design/icon/preview.png" width="160" alt="Video Scrubber icon: a soapy yellow sponge sliding across a glass timeline">
+<img src="design/icon/preview.png" width="160" alt="Video Scrubber icon: a playhead whose handle is a search lens with a play button, standing on a highlighted frame in a timeline">
 
 Describe a moment and find it. Video Scrubber transcribes your videos, pulls a key frame at every scene change, and lets you search what's said and what's on screen across one video or many at once. Everything runs on your machine with local AI models, accelerated by whatever GPU you have.
 
@@ -93,7 +93,7 @@ GitHub Actions builds macOS (Apple Silicon), Windows and Linux installers on eve
 
 ## Icon
 
-The app icon is an Icon Composer document, `design/icon/AppIcon.icon`, built in layers: a blue gradient, a Liquid Glass timeline, the soap streaks and suds, the sponge, and glass bubbles. `design/icon/build_icon.py` generates it, so it can be tweaked in code or opened and edited in Icon Composer (Xcode 26+). After changing it, run `sh design/icon/export.sh` to regenerate the Liquid Glass `Assets.car` for macOS 26+ and the `.icns`, `.ico` and PNG icons for other platforms.
+The app icon is an Icon Composer document, `design/icon/AppIcon.icon`, built in layers: a blue gradient, a Liquid Glass timeline of key frames with the found one lit in amber, and a playhead whose handle is a glass search lens with a play button in it. `design/icon/build_icon.py` generates it, so it can be tweaked in code or opened and edited in Icon Composer (Xcode 26+). After changing it, run `sh design/icon/export.sh` to regenerate the Liquid Glass `Assets.car` for macOS 26+ and the `.icns`, `.ico` and PNG icons for other platforms.
 
 ## Keyboard
 
