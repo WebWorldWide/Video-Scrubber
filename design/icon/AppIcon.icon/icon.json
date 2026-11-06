@@ -40,43 +40,47 @@
   ],
   "groups": [
     {
-      "name": "Bubbles",
+      "name": "Lens",
       "layers": [
         {
-          "name": "bubbles",
-          "image-name": "bubbles.svg",
+          "name": "play",
+          "image-name": "play.svg",
+          "glass": false
+        },
+        {
+          "name": "ring",
+          "image-name": "ring.svg",
+          "glass": false
+        },
+        {
+          "name": "lens",
+          "image-name": "lens.svg",
           "glass": true
         }
       ],
       "shadow": {
         "kind": "neutral",
-        "opacity": 0.25
+        "opacity": 0.45
       },
       "translucency": {
         "enabled": true,
-        "value": 0.35
+        "value": 0.3
       },
       "specular": true,
       "lighting": "individual"
     },
     {
-      "name": "Suds",
+      "name": "Playhead",
       "layers": [
         {
-          "name": "foam",
-          "image-name": "foam.svg",
+          "name": "stem",
+          "image-name": "stem.svg",
           "glass": false
-        },
-        {
-          "name": "streaks",
-          "image-name": "streaks.svg",
-          "glass": false,
-          "opacity": 0.9
         }
       ],
       "shadow": {
         "kind": "neutral",
-        "opacity": 0.35
+        "opacity": 0.4
       },
       "translucency": {
         "enabled": false,
@@ -85,17 +89,17 @@
       "specular": true
     },
     {
-      "name": "Sponge",
+      "name": "Found",
       "layers": [
         {
-          "name": "sponge",
-          "image-name": "sponge.svg",
+          "name": "found",
+          "image-name": "found.svg",
           "glass": false
         }
       ],
       "shadow": {
         "kind": "layer-color",
-        "opacity": 0.6
+        "opacity": 0.5
       },
       "translucency": {
         "enabled": false,
@@ -107,14 +111,13 @@
       "name": "Timeline",
       "layers": [
         {
-          "name": "ticks",
-          "image-name": "timeline-ticks.svg",
-          "glass": false,
-          "opacity": 0.85
+          "name": "frames",
+          "image-name": "frames.svg",
+          "glass": false
         },
         {
-          "name": "glass",
-          "image-name": "timeline-glass.svg",
+          "name": "track",
+          "image-name": "track-glass.svg",
           "glass": true
         }
       ],
